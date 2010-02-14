@@ -1,0 +1,115 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'pathname'
+require 'logging'
+require 'trollop'
+require 'extlib'
+require 'pp'
+require 'mq'
+
+require '../daemonize'
+require 'queue_wrapper'
+
+include Daemonize
+
+opts = Trollop::options do
+  opt :daemon, "daemonise", :default => false
+  opt :logging, "turn amqp logging on", :default => false
+end
+
+agents_to_start = ARGV
+
+unless agents_to_start.empty?
+  puts "Starting Agents:\n%s\n" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
+end
+
+rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
+Logging.configure(AppConfig.app_root + "/config/logging/#{rails_env}.yml")
+logger = Logging::Logger['audit']
+
+$basedir = Pathname.new(File.dirname(__FILE__) + '/agents').realpath.to_s
+
+def start_agent(agent, logger)
+  if PIDFileUtilities.process_exists?(agent)
+    logger.error("Not starting: #{agent}. Agent already exists")
+  else
+    pid = fork do
+      # Detach from the controlling terminal
+      unless sess_id = Process.setsid
+        raise 'Cannot detach from controlled terminal'
+      end
+
+      # Close all file descriptors apart from stdin, stdout, stderr
+      ObjectSpace.each_object(IO) do |io|
+        unless [STDIN, STDOUT, STDERR].include?(io)
+          io.close rescue nil
+        end
+      end
+
+      STDIN.reopen "/dev/null"       # Free file descriptors and
+      #STDOUT.reopen "/tmp/daemon.log", "a" # point them somewhere sensible
+      STDERR.reopen STDOUT           # STDOUT/STDERR should go to a logfile
+
+      logger.info("Starting: #{agent}")
+      exec('/usr/bin/ruby', 'agent_bootstrap.rb', $basedir, agent)
+    end
+    Process.detach(pid)
+  end
+end
+
+if opts[:daemon] == true
+  puts "Going into the background"
+  daemonize
+end
+
+terminate = lambda { AMQP.stop { EM.stop; puts "Shutting down"; exit } }
+
+trap "SIGINT", terminate
+trap "SIGTERM", terminate
+trap "SIGQUIT", terminate
+
+@agents_managed = []
+
+EM.epoll
+EM.run do
+  AMQP.logging = true if opts[:logging]
+
+  RubyMAS::Messaging.new(:manage, :durable => false).receive_message do |header, agent|
+    begin
+      start_agent(agent, logger)
+      @agents_managed << agent unless @agents_managed.include?(agent)
+    rescue RuntimeError => e
+      logger.error(e)
+      logger.error("Cannot load agent: #{agent}")
+    end
+  end
+
+  RubyMAS::Messaging.new(:agents_shutdown, :durable => false).receive_message do |header, message|
+
+    if message == 'all'
+      agents_to_terminate = @agents_managed
+    else
+      if @agents_managed.include?(message)
+        agents_to_terminate = [message]
+      else
+        agents_to_terminate = []
+        logger.error("Cannot kill agent #{message}, it doesn't exist.")
+      end
+    end
+
+    unmonitor_queue = RubyMAS::Messaging.new(:unmonitor, :durable => false)
+    agents_to_terminate.each do |agent|
+      if PIDFileUtilities.process_exists?(agent)
+        # Make sure the restart agent is not monitoring the agent.
+        unmonitor_queue.send_message(agent)
+        logger.info("Sending kill message to #{agent}")
+        queue = RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("kill")
+      end
+    end
+  end
+
+  agents_to_start.each do |agent|
+    RubyMAS::Messaging.new(:manage, :durable => false).send_message(agent)
+  end
+end

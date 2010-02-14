@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+require 'pp'
+require 'mq'
+require File.dirname(__FILE__) + '/queue_wrapper'
+
+queue_name = ARGV[0]
+if queue_name.nil?
+  puts "usage: #{$0} <queue> <message>"
+  exit
+end
+
+message = ARGV[1] || ""
+
+EM.run do
+  queue = RubyMAS::Messaging.new(queue_name)
+  queue.send_message(message)
+  AMQP.stop { EM.stop }
+end
