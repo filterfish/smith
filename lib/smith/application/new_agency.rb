@@ -10,18 +10,16 @@ require 'extlib'
 require 'pp'
 require 'mq'
 
-require '../daemonize'
-require 'queue_wrapper'
-
-include Daemonize
-
 class Agency
   def initialize(base_path)
     @base_path = base_path
     @agents_managed = []
 
+    @bootstraper = File.join($:.first, '..', 'bootstrap.rb')
+
     rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-    Logging.configure(AppConfig.app_root + "/config/logging/#{rails_env}.yml")
+    #Logging.configure(AppConfig.app_root + "/config/logging/#{rails_env}.yml")
+    Logging.configure("./config/logging.yml")
     @logger = Logging::Logger['audit']
   end
 
@@ -93,40 +91,11 @@ class Agency
         STDERR.reopen(STDOUT)
 
         @logger.info("Starting: #{agent}")
-        exec('/usr/bin/ruby', 'agent_bootstrap.rb', @base_path, agent)
+        pp @base_path
+        exec('/usr/bin/ruby', @bootstraper, @base_path, agent)
       end
       # We don't want any zombies.
       Process.detach(pid)
     end
-  end
-end
-
-include Daemonize
-
-opts = Trollop::options do
-  opt :daemon, "daemonise", :default => false
-  opt :logging, "turn amqp logging on", :default => false
-  opt :agents_dir, "agents-dir", :type => :string, :required => true
-end
-
-agents_to_start = ARGV
-
-unless agents_to_start.empty?
-  puts "Starting Agents:\n%s\n" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
-end
-
-daemonize if opts[:daemon] == true
-
-EM.epoll
-EM.run do
-  AMQP.logging = true if opts[:logging]
-
-  agency = Agency.new("/home/rgh/dev/rails/pn/lib/amqp/agents")
-
-  agency.setup_signal_handlers
-  agency.setup_queue_handlers
-
-  agents_to_start.each do |agent|
-    RubyMAS::Messaging.new(:manage, :durable => false).send_message(agent)
   end
 end

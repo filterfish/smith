@@ -1,5 +1,4 @@
 require 'extlib'
-require File.dirname(__FILE__) + '/app_config_wrapper'
 
 class PIDFileUtilities
 

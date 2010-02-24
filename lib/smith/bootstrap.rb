@@ -1,10 +1,11 @@
-$:.unshift(File.dirname(__FILE__))
-
 # This should never be run directly it should only be
 # ever run by the agency.
 
-require 'agent'
-require 'messaging'
+$root = File.expand_path(File.join(File.dirname(__FILE__), "..", ".."))
+
+$:.unshift(File.join($root, "lib"))
+
+require 'smith'
 
 class AgentBootstrap
 
@@ -27,7 +28,7 @@ class AgentBootstrap
 
   def setup_logger
     rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-    Logging.configure(AppConfig.app_root + "/config/logging/#{rails_env}.yml")
+    Logging.configure(File.join($root,"/config/logging.yml"))
     @logger = Logging::Logger['audit']
   end
 end

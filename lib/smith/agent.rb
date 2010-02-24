@@ -4,9 +4,6 @@ require 'yajl'
 require 'logging'
 require 'extlib'
 
-require File.dirname(__FILE__) + '/app_config_wrapper'
-require File.dirname(__FILE__) + '/pid_file_utilities'
-
 module RubyMAS
 
   class Agent
@@ -17,7 +14,7 @@ module RubyMAS
       @queues = {}
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
-      @pid_file = PIDFileUtilities.new(Process.pid, self.class.name, AppConfig.pid_files.dir)
+      @pid_file = PIDFileUtilities.new(Process.pid, self.class.name, "/tmp")
 
       @signal_handlers = []
       @agent_name = self.class.to_s.snake_case
@@ -137,6 +134,13 @@ module RubyMAS
     end
 
     private
+
+    # Convenience method to create multiple queues.
+    def add_queues(queue_names)
+      queue_names.each do |queue_name,opts|
+        add_queue(queue_name, opts)
+      end
+    end
 
     def setup_kill_message_handler
       queue_name = "agent.#{self.class.to_s.snake_case}"

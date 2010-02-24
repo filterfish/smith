@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
 
+$:.unshift(File.dirname(__FILE__) + '/../lib')
+
 require 'pp'
-require 'mq'
-require File.dirname(__FILE__) + '/queue_wrapper'
+require 'smith'
 
 queue_name = ARGV[0]
 if queue_name.nil?

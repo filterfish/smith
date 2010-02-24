@@ -4,9 +4,6 @@ require 'yajl'
 require 'logging'
 require 'extlib'
 
-require File.dirname(__FILE__) + '/app_config_wrapper'
-require File.dirname(__FILE__) + '/pid_file_utilities'
-
 module RubyMAS
 
   class Timeout < RuntimeError; end
