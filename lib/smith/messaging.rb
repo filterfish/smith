@@ -1,4 +1,3 @@
-require 'pp'
 require 'mq'
 require 'yajl'
 require 'logging'

@@ -3,7 +3,7 @@
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 require 'smith'
-require 'smith/application/new_agency'
+require 'smith/application/agency'
 require 'daemons/daemonize'
 
 include Daemonize

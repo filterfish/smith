@@ -91,7 +91,6 @@ class Agency
         STDERR.reopen(STDOUT)
 
         @logger.info("Starting: #{agent}")
-        pp @base_path
         exec('/usr/bin/ruby', @bootstraper, @base_path, agent)
       end
       # We don't want any zombies.
