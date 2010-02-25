@@ -1,0 +1,37 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.dirname(__FILE__) + '/../lib')
+
+require 'smith'
+require 'smith/application/new_agency'
+require 'daemons/daemonize'
+
+include Daemonize
+
+opts = Trollop::options do
+  opt :daemon, "daemonise", :default => false
+  opt :logging, "turn amqp logging on", :default => false
+  opt :agents_dir, "agents-dir", :type => :string, :required => true
+end
+
+agents_to_start = ARGV
+
+unless agents_to_start.empty?
+  puts "Starting Agents:\n%s\n" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
+end
+
+daemonize if opts[:daemon]
+
+EM.epoll
+EM.run do
+  AMQP.logging = true if opts[:logging]
+
+  agency = Agency.new(opts[:agents_dir])
+
+  agency.setup_signal_handlers
+  agency.setup_queue_handlers
+
+  agents_to_start.each do |agent|
+    RubyMAS::Messaging.new(:manage, :durable => false).send_message(agent)
+  end
+end
