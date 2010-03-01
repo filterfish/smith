@@ -1,0 +1,21 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Add number to each agent
+desc: |-
+  Each agent should have a unique name which precludes having multiple
+  instances of the same agent. By adding a number to each agent which is
+  concatonated with the agent name the problem can be alleviated.
+type: :feature
+component: smith
+release: 
+reporter: Richard Heycock <rgh@roughage.com.au>
+status: :unstarted
+disposition: 
+creation_time: 2010-03-01 08:08:51.442077 Z
+references: []
+
+id: b04998451f25dd3af83d3e845ea411c86a3e801c
+log_events: 
+- - 2010-03-01 08:09:05.613388 Z
+  - Richard Heycock <rgh@roughage.com.au>
+  - created
+  - ""

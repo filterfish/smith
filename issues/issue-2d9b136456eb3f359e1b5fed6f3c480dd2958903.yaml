@@ -1,0 +1,20 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: Add --dead option to list
+desc: |-
+  Check the process table to see if there are any agents that should
+  be running but aren't.
+type: :feature
+component: smith
+release: 
+reporter: Richard Heycock <rgh@roughage.com.au>
+status: :unstarted
+disposition: 
+creation_time: 2010-02-28 22:38:02.062522 Z
+references: []
+
+id: 2d9b136456eb3f359e1b5fed6f3c480dd2958903
+log_events: 
+- - 2010-02-28 22:38:09.810387 Z
+  - Richard Heycock <rgh@roughage.com.au>
+  - created
+  - ""
