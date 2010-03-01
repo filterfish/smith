@@ -1,5 +1,5 @@
 require 'mq'
-require 'yajl'
+require 'bert'
 require 'logging'
 require 'extlib'
 
@@ -9,11 +9,11 @@ module RubyMAS
 
   module Encoding
     def encode(message)
-      Marshal.dump(message)
+      BERT::Encoder.encode(message)
     end
 
     def decode(message)
-      Marshal.load(message)
+      BERT::Decoder.decode(message)
     end
   end
 
