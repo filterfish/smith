@@ -18,7 +18,6 @@ class Agency
     @bootstraper = File.join($:.first, '..', 'bootstrap.rb')
 
     rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-    #Logging.configure(AppConfig.app_root + "/config/logging/#{rails_env}.yml")
     Logging.configure("./config/logging.yml")
     @logger = Logging::Logger['audit']
   end
@@ -60,6 +59,13 @@ class Agency
           @logger.info("Sending kill message to #{agent}")
           RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("kill")
         end
+      end
+    end
+
+    RubyMAS::Messaging.new(:agents_list, :durable => false).receive_message do |header, message|
+      if header.reply_to
+        queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
+        queue.send_message(@agents_managed, :message_id => header.message_id)
       end
     end
   end
