@@ -1,0 +1,131 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.dirname(__FILE__) + '/../lib')
+
+require 'smith'
+require 'readline'
+require 'json'
+require 'pp'
+
+$base_dir = '/home/rgh/dev/ruby/smith'
+
+class AgentCommands
+
+  class AgentDoesNotExist < RuntimeError; end
+
+  def ls(opts={})
+    list = RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil)
+    (opts[:format]) ? "%s\n" % list.join(" ") : list
+  end
+
+  alias list ls
+
+  def message(opts={})
+    args = opts[:args]
+    queue = args[0] 
+    pp queue
+    payload = (args[2] && args[2] == :json) ? args[1].to_json : args[1]
+    RubyMAS::Sync::Messaging.new(queue).send_message(payload)
+    "sending %s to %s\n" % [payload, queue] if opts[:format]
+  end
+
+  def start(opts={})
+    args = opts[:args]
+    payload = args[0]
+    RubyMAS::Sync::Messaging.new(:manage).send_message(payload)
+    ''
+  end
+
+  def stop(opts={})
+    args = opts[:args]
+    agent = args.first
+    if agent == 'all'
+      RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
+    else
+      if exists?(agent)
+        queue = "agent.#{Extlib::Inflection::underscore(agent)}"
+        RubyMAS::Sync::Messaging.new(queue).send_message('shutdown')
+      else
+        raise AgentDoesNotExist, agent
+      end
+    end
+    ''
+  end
+
+  def self.commands
+    %w{ls list message start stop}
+  end
+
+  private
+
+  def exists?(agent)
+    Dir.glob(File.join($base_dir, 'agents', '*.rb')).map { |a| File.basename(a, '.rb') }.include?(Extlib::Inflection::underscore(agent)).tap {|a| pp a }
+  end
+
+end
+
+class SmithControl
+  def initialize
+    trap('INT', 'SIG_IGN')
+
+    @history_file = "#{ENV['HOME']}/.agentctl"
+
+    @agent_ctl_commands = %w{exit}
+    Readline.completion_append_character = " "
+    Readline.completion_proc = proc { |s| AgentCommands.commands.grep(Regexp.new("^#{Regexp.escape(s)}")) }
+  end
+
+  def run_command_loop
+    manage_history do
+      while input = Readline.readline('# ', true)
+        if input.size > 0
+          split_input = input.split
+          command = split_input.shift.to_sym
+          print run_command(command, :format => true, :args => split_input)
+        end
+      end
+    end
+  end
+
+  def run_command(command, args)
+    cmd = AgentCommands.new
+    begin
+      cmd.send(command, args)
+    rescue NoMethodError, TypeError => e
+      pp e.backtrace
+      STDERR.puts "#{command}: command not known"
+    rescue AgentCommands::AgentDoesNotExist => e
+      STDERR.puts "No such agent: #{e}"
+    end
+  end
+
+  private
+
+  def manage_history
+    read_history
+    yield
+    save_history
+  end
+
+  def read_history
+    if File.exist?(@history_file)
+      File.read(@history_file).each do |history_item|
+        Readline::HISTORY << history_item.chomp
+      end
+    end
+  end
+
+  def save_history
+    File.open(@history_file, 'w', 0600) do |history_file|
+      history_file.puts(Readline::HISTORY.to_a)
+    end
+  end
+end
+
+smith = SmithControl.new
+
+if ARGV.empty?
+  smith.run_command_loop
+else
+  smith.run_command(ARGV.shift, ARGV)
+end
