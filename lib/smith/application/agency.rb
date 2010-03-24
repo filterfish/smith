@@ -48,7 +48,7 @@ class Agency
           agents_to_terminate = [message]
         else
           agents_to_terminate = []
-          @logger.error("Cannot kill agent #{message}, it doesn't exist.")
+          @logger.error("Cannot agents_shutdown agent #{message}, it doesn't exist.")
         end
       end
 
@@ -56,14 +56,15 @@ class Agency
         if PIDFileUtilities.process_exists?(agent)
           # Make sure the restart agent is not monitoring the agent.
           RubyMAS::Messaging.new(:unmonitor, :durable => false).send_message(agent)
-          @logger.info("Sending kill message to #{agent}")
-          RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("kill")
+          @logger.info("Sending unmonitor message to #{agent}")
+          RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("shutdown")
         end
       end
     end
 
     RubyMAS::Messaging.new(:agents_list, :durable => false).receive_message do |header, message|
       if header.reply_to
+        @logger.debug("Agents managed: #{@agents_managed}")
         queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
         queue.send_message(@agents_managed, :message_id => header.message_id)
       end

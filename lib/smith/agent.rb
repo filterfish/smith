@@ -34,7 +34,7 @@ module RubyMAS
       end
 
       @logger.debug "Setting up termination handler"
-      setup_kill_message_handler
+      setup_message_handlers
     end
 
     # Install any signal handlers. This can be called muliple times
@@ -100,6 +100,7 @@ module RubyMAS
             @logger.error(e)
             @logger.error("Stopping EM")
             @pid_file.remove
+            Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
             AMQP.stop{ EM.stop }
           end
         end
@@ -142,7 +143,7 @@ module RubyMAS
       end
     end
 
-    def setup_kill_message_handler
+    def setup_message_handlers
       queue_name = "agent.#{self.class.to_s.snake_case}"
       queue = Messaging.new(queue_name, :durable => false)
       queue.receive_message do |h,payload|
@@ -152,8 +153,6 @@ module RubyMAS
           h.ack
           # Make sure we shut down cleanly.
           EM.next_tick { AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } } }
-        when 'version'
-          @logger.info("%s: %s" % [self.class, `git describe --tags 2> /dev/null || echo -n "Either git isn't installed or you are not in a git repo"`])
         else
           @logger.warn("Unhandled message for #{self.class}")
         end
