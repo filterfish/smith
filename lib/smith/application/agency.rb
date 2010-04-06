@@ -59,6 +59,7 @@ class Agency
           @logger.info("Sending unmonitor message to #{agent}")
           RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("shutdown")
         end
+        @agents_managed.delete(agent)
       end
     end
 
@@ -68,6 +69,10 @@ class Agency
         queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
         queue.send_message(@agents_managed, :message_id => header.message_id)
       end
+    end
+
+    RubyMAS::Messaging.new(:terminated, :durable => false).receive_message do |header, payload|
+      pp payload
     end
   end
 

@@ -1,6 +1,5 @@
 require 'pp'
 require 'mq'
-require 'yajl'
 require 'logging'
 require 'extlib'
 
@@ -23,6 +22,7 @@ module RubyMAS
 
       install_signal_handler do
         logger.debug("Running agent's default signal handler")
+        send_terminate_message
         @pid_file.remove
       end
 
@@ -38,7 +38,7 @@ module RubyMAS
     end
 
     # Install any signal handlers. This can be called muliple times
-    # in which each handler is added to the front of a queue of
+    # in which case each handler is added to the front of a queue of
     # handlers and execute in that order.
     def install_signal_handler(&handler)
       # Insert any new handlers at the front of the array.
@@ -46,7 +46,8 @@ module RubyMAS
 
       signal_handlers = lambda { |sig|
         @logger.info("#{self.class.to_s} received signal #{sig}. Running signal handlers")
-        AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } }
+        @signal_handlers.each { |handler| handler.call }
+        AMQP.stop { EM.stop; }
       }
 
       @signals.each do |signal|
@@ -100,7 +101,6 @@ module RubyMAS
             @logger.error(e)
             @logger.error("Stopping EM")
             @pid_file.remove
-            Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
             AMQP.stop{ EM.stop }
           end
         end
@@ -144,7 +144,7 @@ module RubyMAS
     end
 
     def setup_message_handlers
-      queue_name = "agent.#{self.class.to_s.snake_case}"
+      queue_name = "agent.#{@agent_name}"
       queue = Messaging.new(queue_name, :durable => false)
       queue.receive_message do |h,payload|
         case payload
@@ -154,9 +154,14 @@ module RubyMAS
           # Make sure we shut down cleanly.
           EM.next_tick { AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } } }
         else
-          @logger.warn("Unhandled message for #{self.class}")
+          @logger.warn("Unhandled message for #{@agent_name}")
         end
       end
+    end
+
+    # Send a message saying I'm dying
+    def send_terminate_message
+      Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
     end
   end
 end
