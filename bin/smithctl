@@ -4,7 +4,6 @@ $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 require 'smith'
 require 'readline'
-require 'json'
 require 'pp'
 
 $base_dir = '/home/rgh/dev/ruby/smith'
@@ -15,7 +14,11 @@ class AgentCommands
 
   def ls(opts={})
     list = RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil)
-    (opts[:format]) ? "%s\n" % list.join(" ") : list
+    if opts[:format]
+      (list.empty?) ? "" : "%s\n" % list.join(" ")
+    else
+      list
+    end
   end
 
   alias list ls
@@ -31,8 +34,12 @@ class AgentCommands
 
   def start(opts={})
     args = opts[:args]
-    payload = args[0]
-    RubyMAS::Sync::Messaging.new(:manage).send_message(payload)
+    agent = args[0]
+    if exists?(agent)
+      RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
+    else
+      raise AgentDoesNotExist, agent
+    end
     ''
   end
 
@@ -43,8 +50,7 @@ class AgentCommands
       RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
     else
       if exists?(agent)
-        queue = "agent.#{Extlib::Inflection::underscore(agent)}"
-        RubyMAS::Sync::Messaging.new(queue).send_message('shutdown')
+        RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
       else
         raise AgentDoesNotExist, agent
       end
