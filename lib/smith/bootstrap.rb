@@ -20,8 +20,12 @@ class AgentBootstrap
   end
 
   def run
-    agent_instance = Kernel.const_get(@agent).new(:logger => @logger)
-    agent_instance.run
+    begin
+      agent_instance = Kernel.const_get(@agent).new(:logger => @logger)
+      agent_instance.run
+    rescue => e
+      @logger.error("Failed to run agent: #{@agent}: #{e}")
+    end
   end
 
   private

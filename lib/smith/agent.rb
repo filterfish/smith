@@ -19,8 +19,8 @@ module RubyMAS
 
       $0 = "#{@agent_name}"
 
-      install_signal_handler do
-        logger.debug("Running #{@agent_name}'s default signal handler")
+      signal_handler = install_signal_handler do
+        @logger.debug("Running #{@agent_name}'s default signal handler")
         send_terminate_message
         @pid_file.remove
       end
@@ -28,7 +28,7 @@ module RubyMAS
       add_queues(@@agent_queues)
 
       if options[:restart]
-        logger.debug("Sending agent name [#{self.class.to_s}] to restart agent")
+        @logger.debug("Sending agent name [#{self.class.to_s}] to restart agent")
         Messaging.new(:monitor, :durable => false).send_message(self.class.to_s)
       end
 
@@ -43,14 +43,12 @@ module RubyMAS
       # Insert any new handlers at the front of the array.
       @signal_handlers.insert(0, handler)
 
-      signal_handlers = lambda { |sig|
-        @logger.info("#{self.class.to_s} received signal #{sig}. Running signal handlers")
-        @signal_handlers.each { |handler| handler.call }
-        AMQP.stop { EM.stop; }
+      signal_handler = lambda {
+        run_signal_handlers
       }
 
       @signals.each do |signal|
-        trap signal, signal_handlers
+        trap signal, signal_handler
       end
     end
 
@@ -77,7 +75,7 @@ module RubyMAS
           queue.send_message(message, {:message_id => header.message_id}.merge(options))
           queue.close
         rescue => e
-          logger.error(e)
+          @logger.error(e)
         end
       end
     end
@@ -100,16 +98,13 @@ module RubyMAS
             @logger.error(e)
             @logger.error("Stopping EM")
             @pid_file.remove
-            AMQP.stop{ EM.stop }
+          ensure
+            run_signal_handlers
           end
         end
       else
         raise RuntimeError, "No such Queue: #{queue} for #{@agent_name}"
       end
-    end
-
-    def logger
-      @logger
     end
 
     protected
@@ -135,6 +130,11 @@ module RubyMAS
 
     private
 
+    def run_signal_handlers
+      @logger.info("#{self.class.to_s} shutting down. Running signal handlers")
+      EM.next_tick { AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } } }
+    end
+
     # Convenience method to create multiple queues.
     def add_queues(queue_names)
       queue_names.each do |queue_name,opts|
@@ -150,8 +150,7 @@ module RubyMAS
         when 'shutdown'
           @logger.info("#{self.class.to_s} received shutdown message. Time to die")
           h.ack
-          # Make sure we shut down cleanly.
-          EM.next_tick { AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } } }
+          run_signal_handlers
         else
           @logger.warn("Unhandled message for #{@agent_name}")
         end
@@ -161,7 +160,7 @@ module RubyMAS
     # Send a message saying I'm dying
     def send_terminate_message
       @logger.debug("Sending #{@agent_name}'s terminate message")
-      Messaging.new(:shite, :auto_delete => true).send_message(@agent_name)
+      Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
     end
   end
 end
