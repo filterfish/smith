@@ -84,11 +84,8 @@ class Agency
     end
 
     RubyMAS::Messaging.new(:terminated, :durable => false).receive_message do |header, payload|
-      pp "Terminated #{payload}"
+      @agents_managed.delete(payload[:agent].camel_case)
     end
-  end
-
-  def logger
   end
 
   private

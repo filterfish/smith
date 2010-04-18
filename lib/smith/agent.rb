@@ -132,7 +132,9 @@ module RubyMAS
 
     def run_signal_handlers
       @logger.info("#{self.class.to_s} shutting down. Running signal handlers")
-      EM.next_tick { AMQP.stop { EM.stop; @signal_handlers.each { |handler| handler.call } } }
+      send_terminate_message
+      @signal_handlers.each { |handler| handler.call }
+      EM.next_tick { AMQP.stop { EM.stop; } }
     end
 
     # Convenience method to create multiple queues.
@@ -160,7 +162,7 @@ module RubyMAS
     # Send a message saying I'm dying
     def send_terminate_message
       @logger.debug("Sending #{@agent_name}'s terminate message")
-      Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
+      Messaging.new(:terminated, :auto_delete => true).send_message(:agent => @agent_name)
     end
   end
 end
