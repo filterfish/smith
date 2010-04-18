@@ -4,7 +4,6 @@ require 'logging'
 require 'extlib'
 
 module RubyMAS
-
   class Agent
     def initialize(options={})
 
@@ -21,7 +20,7 @@ module RubyMAS
       $0 = "#{@agent_name}"
 
       install_signal_handler do
-        logger.debug("Running agent's default signal handler")
+        logger.debug("Running #{@agent_name}'s default signal handler")
         send_terminate_message
         @pid_file.remove
       end
@@ -161,7 +160,8 @@ module RubyMAS
 
     # Send a message saying I'm dying
     def send_terminate_message
-      Messaging.new(:terminated, :auto_delete => true).send_message(@agent_name)
+      @logger.debug("Sending #{@agent_name}'s terminate message")
+      Messaging.new(:shite, :auto_delete => true).send_message(@agent_name)
     end
   end
 end

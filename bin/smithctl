@@ -6,8 +6,6 @@ require 'smith'
 require 'readline'
 require 'pp'
 
-$base_dir = '/home/rgh/dev/ruby/smith'
-
 class AgentCommands
 
   class AgentDoesNotExist < RuntimeError; end
@@ -23,10 +21,16 @@ class AgentCommands
 
   alias list ls
 
+  def agents(opts={})
+    agents = RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil)
+    if opts[:format]
+      (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
+    end
+  end
+
   def message(opts={})
     args = opts[:args]
     queue = args[0] 
-    pp queue
     payload = (args[2] && args[2] == :json) ? args[1].to_json : args[1]
     RubyMAS::Sync::Messaging.new(queue).send_message(payload)
     "sending %s to %s\n" % [payload, queue] if opts[:format]
@@ -35,7 +39,7 @@ class AgentCommands
   def start(opts={})
     args = opts[:args]
     agent = args[0]
-    if exists?(agent)
+    if !RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(:agent => agent).empty?
       RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
     else
       raise AgentDoesNotExist, agent
@@ -49,7 +53,7 @@ class AgentCommands
     if agent == 'all'
       RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
     else
-      if exists?(agent)
+      if !RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(:agent => agent).empty?
         RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
       else
         raise AgentDoesNotExist, agent
@@ -59,15 +63,8 @@ class AgentCommands
   end
 
   def self.commands
-    %w{ls list message start stop}
+    %w{ls list message start stop agents}
   end
-
-  private
-
-  def exists?(agent)
-    Dir.glob(File.join($base_dir, 'agents', '*.rb')).map { |a| File.basename(a, '.rb') }.include?(Extlib::Inflection::underscore(agent)).tap {|a| pp a }
-  end
-
 end
 
 class SmithControl

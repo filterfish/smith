@@ -32,23 +32,27 @@ class Agency
     # Set up queue to manage new agents
     RubyMAS::Messaging.new(:manage, :durable => false).receive_message do |header, agent|
       begin
-        start_agent(agent)
-        @agents_managed << agent unless @agents_managed.include?(agent)
+        if !agents_available(agent).empty?
+          start_agent(agent)
+          @agents_managed << agent unless @agents_managed.include?(agent)
+        else
+          @logger.error("Agent not known: #{agent}")
+        end
       rescue RuntimeError => e
         @logger.error(e)
         @logger.error("Cannot load agent: #{agent}")
       end
     end
 
-    RubyMAS::Messaging.new(:agents_shutdown, :durable => false).receive_message do |header, message|
-      if message == 'all'
+    RubyMAS::Messaging.new(:agents_shutdown, :durable => false).receive_message do |header, payload|
+      if payload == 'all'
         agents_to_terminate = @agents_managed
       else
-        if @agents_managed.include?(message)
-          agents_to_terminate = [message]
+        if @agents_managed.include?(payload)
+          agents_to_terminate = [payload]
         else
           agents_to_terminate = []
-          @logger.error("Cannot agents_shutdown agent #{message}, it doesn't exist.")
+          @logger.error("Cannot agents_shutdown agent #{payload}, it doesn't exist.")
         end
       end
 
@@ -63,7 +67,7 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:agents_list, :durable => false).receive_message do |header, message|
+    RubyMAS::Messaging.new(:agents_list, :durable => false).receive_message do |header, payload|
       if header.reply_to
         @logger.debug("Agents managed: #{@agents_managed}")
         queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
@@ -71,14 +75,28 @@ class Agency
       end
     end
 
+    RubyMAS::Messaging.new(:agents_available, :durable => false).receive_message do |header, payload|
+      if header.reply_to
+        queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
+        agents = (payload && payload[:agent]) ? agents_available(payload[:agent]) : agents_available
+        queue.send_message(agents, :message_id => header.message_id)
+      end
+    end
+
     RubyMAS::Messaging.new(:terminated, :durable => false).receive_message do |header, payload|
-      pp payload
+      pp "Terminated #{payload}"
     end
   end
 
   def logger
   end
+
   private
+
+  def agents_available(agent=nil)
+    glob = (agent) ? "#{agent.snake_case}.rb" : '*.rb'
+    Dir.glob(File.join(@base_path, glob)).map { |a| File.basename(a, '.rb').camel_case }
+  end
 
   def start_agent(agent)
     if PIDFileUtilities.process_exists?(agent)
