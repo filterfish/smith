@@ -37,15 +37,27 @@ module RubyMAS
     end
 
     def send_message(message, options={})
-      @exchange.publish(encode(message), {:ack => true}.merge(options))
+      @exchange.publish(encode({:message => message, :pass_through => options.delete(:pass_through)}), {:ack => true}.merge(options))
     end
 
-    def receive_message(options={})
-      options = {:ack => true}.merge(options)
-      @queue.subscribe(options) do |header,message|
-        if message
-          yield header, decode(message)
-          header.ack if options[:ack]
+    def receive_message(options={}, &block)
+      receive_message_from_queue(@queue, options, &block)
+    end
+
+    def send_and_receive(message, options, &block)
+      timeout = options.delete(:timeout) || 300
+      message_id = rand(999_999_999_999).to_s(16)
+      reply_queue_name = "reply." + rand(999_999_999).to_s(16)
+
+      receive_queue = MQ::Queue.new(@mq, reply_queue_name, options.merge(:exclusive => true, :durable => false, :auto_delete => true))
+
+      send_message(message, :reply_to => reply_queue_name, :message_id => message_id)
+
+      receive_message_from_queue(receive_queue, options.merge(:once => true), &block) do |header,message,pass_through|
+        if header.message_id == message_id
+          yield header,message
+        else
+          puts("Discarding message as the message_id does not match")
         end
       end
     end
@@ -58,6 +70,21 @@ module RubyMAS
 
     def close
       @mq.close
+    end
+
+    def receive_message_from_queue(queue, options={}, &block)
+      options = {:ack => true}.merge(options)
+      once = options.delete(:once)
+      if !queue.subscribed?
+        queue.subscribe(options) do |header,message|
+          if message
+            decoded_message = decode(message)
+            block.call header, decoded_message[:message], decoded_message[:pass_through]
+            queue.unsubscribe if once
+            header.ack if options[:ack]
+          end
+        end
+      end
     end
   end
 
@@ -78,17 +105,12 @@ module RubyMAS
       def send_message(message, options={})
         bunny_run do |bunny|
           queue = bunny.queue(@queue_name, @options.merge(:durable => @options[:durable]))
-          queue.publish(encode(message), options)
+          queue.publish(encode({:message => message, :pass_through => options.delete(:pass_through)}), options)
         end
       end
 
-      def receive_message(options={})
-        bunny_run do |bunny|
-          queue = bunny.queue(@queue_name, @queue_options.merge(:durable => @options[:durable]))
-          queue.pop(options.merge(:ack => true))
-        end
-      end
-
+      # Send and a message to the named queue and wait for the response. The return queue is automatically
+      # generated. Note the :pass_through option is not valid and will be silently ignored
       def send_and_receive_message(message, opts={})
         response = nil
 
@@ -118,8 +140,7 @@ module RubyMAS
 
       private
 
-      # Use instead of Bunny.run to avoid the cost of create a client
-      # every message.
+      # Use instead of Bunny.run to avoid the cost of creating a client every message.
       def bunny_run
         @bunny.start
         yield @bunny

@@ -67,12 +67,23 @@ module RubyMAS
       end
     end
 
+    def send_and_receive(queue, message="", options={})
+      if @queues[queue.to_sym]
+        @queues[queue.to_sym].send_and_receive(message, options) do |header,message,pass_through|
+          yield header,message,pass_through
+        end
+      else
+        raise RuntimeError, "No such Queue: #{queue} for #{@agent_name}"
+      end
+    end
+
     # Reply to a message. This will only work if the reply_to header is set.
     def reply_to(header, message, options={})
       if header.reply_to
         begin
+          # This may be a problem if a message is already declared :auto_delete => false
           queue = Messaging.new(header.reply_to, :auto_delete => true)
-          queue.send_message(message, {:message_id => header.message_id}.merge(options))
+          queue.send_message(message, {:message_id => header.message_id, :pass_through => @pass_through}.merge(options))
           queue.close
         rescue => e
           @logger.error(e)
@@ -86,12 +97,13 @@ module RubyMAS
     # next starts the message will be redelivered.
     def get_message(queue, options={})
       if @queues[queue.to_sym]
-        @queues[queue.to_sym].receive_message(options) do |header,message|
+        @queues[queue.to_sym].receive_message(options) do |header,message,pass_through|
           begin
             if AMQP.closing?
               @logger.error("Message ignored; it will be redelivered later")
             else
-              yield header, message
+              @pass_through = pass_through
+              yield header, message, @pass_through
             end
           rescue Exception => e
             @logger.error("Error in agent #{@agent_name}:")
@@ -108,6 +120,10 @@ module RubyMAS
     end
 
     protected
+
+    def logger
+      @logger
+    end
 
     class << self
       # Specify any queues that the agent will use. There must

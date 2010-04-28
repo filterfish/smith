@@ -30,7 +30,7 @@ class AgentCommands
 
   def message(opts={})
     args = opts[:args]
-    queue = args[0] 
+    queue = args[0]
     payload = (args[2] && args[2] == :json) ? args[1].to_json : args[1]
     RubyMAS::Sync::Messaging.new(queue).send_message(payload)
     "sending %s to %s\n" % [payload, queue] if opts[:format]
