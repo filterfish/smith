@@ -16,8 +16,8 @@ end
 
 agents_to_start = ARGV
 
-unless agents_to_start.empty?
-  puts "Starting Agents:\n%s\n" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
+if ! agents_to_start.empty?
+  puts "Starting Agents:\n%s" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
 end
 
 daemonize if opts[:daemon]
@@ -31,7 +31,14 @@ EM.run do
   agency.setup_signal_handlers
   agency.setup_queue_handlers
 
-  agents_to_start.each do |agent|
-    RubyMAS::Messaging.new(:manage, :durable => false).send_message(agent)
-  end
+  n = 0
+  start_agent = proc {
+    if n < agents_to_start.size
+      RubyMAS::Messaging.new(:manage).send_message(agents_to_start[n])
+      n += 1
+      EM.next_tick(&start_agent)
+    end
+  }
+
+  EM.next_tick(&start_agent)
 end
