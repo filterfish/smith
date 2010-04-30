@@ -31,6 +31,7 @@ module RubyMAS
       # Set up QOS. If you do not do this then the subscribe in receive_message
       # will get overwelmd and the whole thing will collapse in on itself.
       @mq.prefetch(1)
+      options = {:durable => false}.merge(options)
 
       @exchange = MQ::Exchange.new(@mq, :direct, queue_name.to_s, options)
       @queue = MQ::Queue.new(@mq, queue_name.to_s, options).bind(@exchange)
@@ -53,9 +54,9 @@ module RubyMAS
 
       send_message(message, :reply_to => reply_queue_name, :message_id => message_id)
 
-      receive_message_from_queue(receive_queue, options.merge(:once => true), &block) do |header,message,pass_through|
+      receive_message_from_queue(receive_queue, options.merge(:once => true)) do |header,message,pass_through|
         if header.message_id == message_id
-          yield header,message
+          yield header, message, pass_through
         else
           puts("Discarding message as the message_id does not match")
         end
@@ -77,8 +78,8 @@ module RubyMAS
       once = options.delete(:once)
       if !queue.subscribed?
         queue.subscribe(options) do |header,message|
-          if message
-            decoded_message = decode(message)
+          decoded_message = decode(message)
+          if decoded_message
             block.call header, decoded_message[:message], decoded_message[:pass_through]
             queue.unsubscribe if once
             header.ack if options[:ack]
@@ -110,7 +111,8 @@ module RubyMAS
       end
 
       # Send and a message to the named queue and wait for the response. The return queue is automatically
-      # generated. Note the :pass_through option is not valid and will be silently ignored
+      # generated.
+      # TODO add :pass_through option
       def send_and_receive_message(message, opts={})
         response = nil
 
