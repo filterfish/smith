@@ -110,8 +110,8 @@ module RubyMAS
             @logger.error(e)
             @logger.error("Stopping EM")
             @pid_file.remove
-          ensure
-            run_signal_handlers
+#          ensure
+#            run_signal_handlers
           end
         end
       else

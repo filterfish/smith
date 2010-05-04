@@ -11,20 +11,22 @@ class AgentCommands
   class AgentDoesNotExist < RuntimeError; end
 
   def ls(opts={})
-    list = RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil)
-    if opts[:format]
-      (list.empty?) ? "" : "%s\n" % list.join(" ")
-    else
-      list
+    RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |list,pass_through|
+      if opts[:format]
+        (list.empty?) ? "" : "%s\n" % list.join(" ")
+      else
+        list
+      end
     end
   end
 
   alias list ls
 
   def agents(opts={})
-    agents = RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil)
-    if opts[:format]
-      (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
+    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |agents,pass_through|
+      if opts[:format]
+        (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
+      end
     end
   end
 
@@ -39,10 +41,12 @@ class AgentCommands
   def start(opts={})
     args = opts[:args]
     agent = args[0]
-    if !RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(:agent => agent).empty?
-      RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
-    else
-      raise AgentDoesNotExist, agent
+    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |result,pass_through|
+      if !result.empty?
+        RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
+      else
+        raise AgentDoesNotExist, agent
+      end
     end
     ''
   end
@@ -53,17 +57,24 @@ class AgentCommands
     if agent == 'all'
       RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
     else
-      if !RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(:agent => agent).empty?
-        RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
-      else
-        raise AgentDoesNotExist, agent
+      RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |result,pass_through|
+        if !result.empty?
+          RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
+        else
+          raise AgentDoesNotExist, agent
+        end
       end
     end
     ''
   end
 
+  def restart(opts={})
+    stop(opts)
+    start(opts)
+  end
+
   def self.commands
-    %w{ls list message start stop agents}
+    %w{ls list message stop start restart agents}
   end
 end
 
