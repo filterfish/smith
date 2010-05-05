@@ -131,7 +131,7 @@ module RubyMAS
             if return_message[:header].message_id == message_id
               response = decode(return_message[:payload])
               if block_given?
-                block_return = yield response[:message], response[:pass_through]
+                block_return = yield return_message[:header], response[:message], response[:pass_through]
               else
                 block_return = [response[:message], response[:pass_through]]
               end

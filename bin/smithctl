@@ -11,7 +11,7 @@ class AgentCommands
   class AgentDoesNotExist < RuntimeError; end
 
   def ls(opts={})
-    RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |list,pass_through|
+    RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |header,list,pass_through|
       if opts[:format]
         (list.empty?) ? "" : "%s\n" % list.join(" ")
       else
@@ -23,7 +23,7 @@ class AgentCommands
   alias list ls
 
   def agents(opts={})
-    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |agents,pass_through|
+    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |header,agents,pass_through|
       if opts[:format]
         (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
       end
@@ -41,7 +41,7 @@ class AgentCommands
   def start(opts={})
     args = opts[:args]
     agent = args[0]
-    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |result,pass_through|
+    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
       if !result.empty?
         RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
       else
@@ -57,7 +57,7 @@ class AgentCommands
     if agent == 'all'
       RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
     else
-      RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |result,pass_through|
+      RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
         if !result.empty?
           RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
         else
