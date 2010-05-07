@@ -45,21 +45,34 @@ module RubyMAS
       receive_message_from_queue(@queue, options, &block)
     end
 
-    def send_and_receive(message, options, &block)
+    def send_and_receive(message, options={}, &block)
       timeout = options.delete(:timeout) || 300
-      message_id = rand(999_999_999_999).to_s(16)
-      reply_queue_name = "reply." + rand(999_999_999).to_s(16)
+      on = options.delete(:on)
 
-      receive_queue = MQ::Queue.new(@mq, reply_queue_name, options.merge(:exclusive => true, :durable => false, :auto_delete => true))
-
-      send_message(message, options.merge(:reply_to => reply_queue_name, :message_id => message_id))
-
-      receive_message_from_queue(receive_queue, options.merge(:once => true)) do |header,message,pass_through|
-        if header.message_id == message_id
-          yield header, message, pass_through
+      if on
+        case
+        when @on_return_quene_name
+          reply_queue_name = @on_return_quene_name
+          receive_queue = @receive_queue
+        when on.to_sym == :internal
+          @on_return_quene_name = random("reply.")
+          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options.merge(:durable => false))
         else
-          puts("Discarding message as the message_id does not match")
+          @on_return_quene_name = on.to_s
+          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options.merge(:durable => false))
         end
+        reply_queue_name = @on_return_quene_name
+        receive_queue = @receive_queue
+      else
+        reply_queue_name = random("reply.")
+        receive_queue = MQ::Queue.new(@mq, reply_queue_name, options.merge(:durable => false))
+      end
+
+      send_message(message, options.merge(:reply_to => reply_queue_name, :ack => true, :message_id => random))
+
+      receive_message_from_queue(receive_queue, options.merge(:once => false)) do |header,message,pass_through|
+        yield header, message, pass_through
+        header.ack
       end
     end
 
@@ -86,6 +99,10 @@ module RubyMAS
           end
         end
       end
+    end
+
+    def random(prefix = '', suffix = '')
+      "#{prefix}#{rand(999_999_999).to_s(16)}#{suffix}"
     end
   end
 
