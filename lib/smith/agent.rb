@@ -106,10 +106,11 @@ module RubyMAS
               yield header, message, @pass_through
             end
           rescue Exception => e
-            @logger.error("Error in agent #{@agent_name}:")
+            @logger.error("Error in agent #{@agent_name}: #{e}")
             @logger.error(e)
             @logger.error("Stopping EM")
             @pid_file.remove
+            AMQP.stop { EM.stop }
 #          ensure
 #            run_signal_handlers
           end
