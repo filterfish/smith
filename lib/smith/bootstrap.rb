@@ -32,7 +32,7 @@ class AgentBootstrap
 
   def setup_logger
     rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-    Logging.configure(File.join($root,"/config/logging.yml"))
+    Logging.configure("config/logging.yml")
     @logger = Logging::Logger['audit']
   end
 end
