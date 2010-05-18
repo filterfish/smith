@@ -62,6 +62,7 @@ class PIDFileUtilities
 
   private
   def self.tmp_directory
-    AppConfig.pid_files.dir rescue nil || ENV["TMP"] || '/tmp'
+    # TODO have a config option to change this. It should go in /var/run.
+    Dir::tmpdir
   end
 end
