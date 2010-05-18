@@ -12,7 +12,7 @@ module RubyMAS
       @queues = {}
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
-      @pid_file = PIDFileUtilities.new(Process.pid, self.class.name, "/tmp")
+      @pid_file = PIDFileUtilities.new(Process.pid, self.class.name)
 
       @signal_handlers = []
       @agent_name = self.class.to_s.snake_case
