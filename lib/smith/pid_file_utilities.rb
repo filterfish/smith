@@ -1,4 +1,5 @@
 require 'extlib'
+require 'tmpdir'
 
 class PIDFileUtilities
 
