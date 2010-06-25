@@ -25,6 +25,7 @@ class AgentBootstrap
       agent_instance.run
     rescue => e
       @logger.error("Failed to run agent: #{@agent}: #{e}")
+      @logger.error(e)
     end
   end
 
