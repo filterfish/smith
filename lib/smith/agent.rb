@@ -92,10 +92,10 @@ module RubyMAS
     end
 
     # Receive a message synchronously. If the agent throws an exception
-    # it will stop AMQP and the event machine meaning the overall
-    # process will die. However no messages will be lost; when the process
-    # next starts the message will be redelivered.
-    def get_message(queue, options={})
+    # it will stop AMQP & eventmachine meaning the overall process
+    # will die. However no messages will be lost as they won't have been
+    # ack'ed; when the process next starts the message will be redelivered.
+    def get_message(queue, options={}, &block)
       if @queues[queue.to_sym]
         @queues[queue.to_sym].receive_message(options) do |header,message,pass_through|
           begin
@@ -103,7 +103,7 @@ module RubyMAS
               @logger.error("Message ignored; it will be redelivered later")
             else
               @pass_through = pass_through
-              yield header, message, @pass_through
+              block.call(header, message, @pass_through)
             end
           rescue Exception => e
             @logger.error("Error in agent #{@agent_name}: #{e}")
