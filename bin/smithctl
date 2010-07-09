@@ -104,13 +104,16 @@ class SmithControl
   def run_command(command, args)
     cmd = AgentCommands.new
     begin
-      cmd.send(command, args)
+      result = cmd.send(command, args)
     rescue NoMethodError, TypeError => e
       pp e.backtrace
       STDERR.puts "#{command}: command not known"
     rescue AgentCommands::AgentDoesNotExist => e
       STDERR.puts "No such agent: #{e}"
+    rescue RubyMAS::Timeout => e
+      STDERR.puts "Cannot contact the agency. Is it running?"
     end
+    result || ""
   end
 
   private
