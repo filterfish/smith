@@ -56,23 +56,22 @@ module RubyMAS
           receive_queue = @receive_queue
         when on.to_sym == :internal
           @on_return_quene_name = random("reply.")
-          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options.merge(:durable => false))
+          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options)
         else
           @on_return_quene_name = on.to_s
-          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options.merge(:durable => false))
+          @receive_queue = MQ::Queue.new(@mq, @on_return_quene_name, options)
         end
         reply_queue_name = @on_return_quene_name
         receive_queue = @receive_queue
       else
         reply_queue_name = random("reply.")
-        receive_queue = MQ::Queue.new(@mq, reply_queue_name, options.merge(:durable => false))
+        receive_queue = MQ::Queue.new(@mq, reply_queue_name, options)
       end
 
-      send_message(message, options.merge(:reply_to => reply_queue_name, :ack => true, :message_id => random))
+      send_message(message, options.merge(:reply_to => reply_queue_name, :message_id => random))
 
-      receive_message_from_queue(receive_queue, options.merge(:once => false)) do |header,message,pass_through|
+      receive_message_from_queue(receive_queue, {:once => false}.merge(options)) do |header,message,pass_through|
         yield header, message, pass_through
-        header.ack
       end
     end
 
@@ -116,7 +115,7 @@ module RubyMAS
       def initialize(queue_name, options={})
         @bunny = Bunny.new(options)
 
-        @options = {:durable => true}.merge(options)
+        @options = {:durable => false}.merge(options)
         @queue_name = queue_name
       end
 
@@ -143,7 +142,7 @@ module RubyMAS
           message = {:message => message, :pass_through => options.delete(:pass_through)}
           send_queue.publish(encode(message), :reply_to => reply_queue_name, :ack => true, :message_id => message_id)
 
-          reply_queue = bunny.queue(reply_queue_name, :exclusive => true, :durable => false, :auto_delete => true)
+          reply_queue = bunny.queue(reply_queue_name, :durable => false, :auto_delete => true)
           reply_queue.subscribe(:header => true, :message_max => 1, :timeout => timeout, :ack => true) do |return_message|
             if return_message[:header].message_id == message_id
               response = decode(return_message[:payload])

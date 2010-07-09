@@ -29,7 +29,7 @@ module RubyMAS
 
       if options[:restart]
         @logger.debug("Sending agent name [#{self.class.to_s}] to restart agent")
-        Messaging.new(:monitor, :durable => false).send_message(self.class.to_s)
+        Messaging.new(:monitor).send_message(self.class.to_s)
       end
 
       @logger.debug "Setting up termination handler"
@@ -81,8 +81,13 @@ module RubyMAS
     def reply_to(header, message, options={})
       if header.reply_to
         begin
-          # This may be a problem if a message is already declared :auto_delete => false
-          queue = Messaging.new(header.reply_to, :auto_delete => true)
+          # I don't really like this but I'm not sure how else to deal
+          # with it. I check to see if the queue name starts with "reply."
+          # in which case I know it has been declared :auto_delete. This
+          # is not perfect as it could be that other queues are declared
+          # with the :auto_delete option but I think it highly unlikely.
+          opts = (header.reply_to.start_with?('reply.')) ? {:auto_delete => true} : {}
+          queue = Messaging.new(header.reply_to, opts)
           queue.send_message(message, {:message_id => header.message_id, :pass_through => @pass_through}.merge(options))
           queue.close
         rescue => e
@@ -163,7 +168,7 @@ module RubyMAS
 
     def setup_message_handlers
       queue_name = "agent.#{@agent_name}"
-      queue = Messaging.new(queue_name, :durable => false)
+      queue = Messaging.new(queue_name)
       queue.receive_message do |h,payload|
         case payload
         when 'shutdown'

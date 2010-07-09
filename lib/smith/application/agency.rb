@@ -30,7 +30,7 @@ class Agency
 
   def setup_queue_handlers
     # Set up queue to manage new agents
-    RubyMAS::Messaging.new(:manage, :durable => false).receive_message do |header, agent|
+    RubyMAS::Messaging.new(:manage).receive_message do |header, agent|
       begin
         if !agents_available(agent).empty?
           start_agent(agent)
@@ -44,7 +44,7 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:agents_shutdown, :durable => false).receive_message do |header, payload|
+    RubyMAS::Messaging.new(:agents_shutdown).receive_message do |header, payload|
       if payload == 'all'
         agents_to_terminate = @agents_managed
       else
@@ -59,15 +59,15 @@ class Agency
       agents_to_terminate.each do |agent|
         if PIDFileUtilities.process_exists?(agent)
           # Make sure the restart agent is not monitoring the agent.
-          RubyMAS::Messaging.new(:unmonitor, :durable => false).send_message(agent)
+          RubyMAS::Messaging.new(:unmonitor).send_message(agent)
           @logger.info("Sending unmonitor message to #{agent}")
-          RubyMAS::Messaging.new("agent.#{agent.snake_case}", :durable => false).send_message("shutdown")
+          RubyMAS::Messaging.new("agent.#{agent.snake_case}").send_message("shutdown")
         end
         @agents_managed.delete(agent)
       end
     end
 
-    RubyMAS::Messaging.new(:agents_list, :durable => false).receive_message do |header, payload|
+    RubyMAS::Messaging.new(:agents_list).receive_message do |header, payload|
       if header.reply_to
         @logger.debug("Agents managed: #{@agents_managed}")
         queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
@@ -75,7 +75,7 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:agents_available, :durable => false).receive_message do |header, payload|
+    RubyMAS::Messaging.new(:agents_available).receive_message do |header, payload|
       if header.reply_to
         queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
         agents = (payload && payload[:agent]) ? agents_available(payload[:agent]) : agents_available
@@ -83,7 +83,7 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:terminated, :durable => false).receive_message do |header, payload|
+    RubyMAS::Messaging.new(:terminated).receive_message do |header, payload|
       @agents_managed.delete(payload[:agent].camel_case)
     end
   end
