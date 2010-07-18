@@ -126,7 +126,7 @@ class SmithControl
 
   def read_history
     if File.exist?(@history_file)
-      File.read(@history_file).each do |history_item|
+      File.read(@history_file).each_line do |history_item|
         Readline::HISTORY << history_item.chomp
       end
     end
