@@ -1,4 +1,3 @@
-require 'pp'
 require 'mq'
 require 'logging'
 require 'extlib'
@@ -173,7 +172,6 @@ module RubyMAS
         case payload
         when 'shutdown'
           @logger.info("#{self.class.to_s} received shutdown message. Time to die")
-          h.ack
           run_signal_handlers
         when /^log_level/
           level = payload.split(/:/)[1].to_sym rescue :info
@@ -188,7 +186,7 @@ module RubyMAS
     # Send a message saying I'm dying
     def send_terminate_message
       @logger.debug("Sending #{@agent_name}'s terminate message")
-      Messaging.new(:terminated, :auto_delete => true).send_message(:agent => @agent_name)
+      Messaging.new(:terminated).send_message(:agent => @agent_name)
     end
   end
 end
