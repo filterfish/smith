@@ -12,6 +12,7 @@ module RubyMAS
       @queues = {}
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
+
       @pid_file = PIDFileUtilities.new(Process.pid, self.class.name)
 
       @signal_handlers = []
@@ -43,7 +44,7 @@ module RubyMAS
       # Insert any new handlers at the front of the array.
       @signal_handlers.insert(0, handler)
 
-      signal_handler = lambda {
+      signal_handler = lambda { |signal|
         run_signal_handlers
       }
 
@@ -88,7 +89,7 @@ module RubyMAS
           # with the :auto_delete option but I think it highly unlikely.
           opts = (header.reply_to.start_with?('reply.')) ? {:auto_delete => true} : {}
           queue = Messaging.new(header.reply_to, opts)
-          queue.send_message(message, {:message_id => header.message_id, :pass_through => @pass_through}.merge(options))
+          queue.send_message(message, {:message_id => header.message_id}.merge(options))
           queue.close
         rescue => e
           @logger.error(e)
@@ -107,8 +108,7 @@ module RubyMAS
             if AMQP.closing?
               @logger.error("Message ignored; it will be redelivered later")
             else
-              @pass_through = pass_through
-              block.call(header, message, @pass_through)
+              block.call(header, message, pass_through)
             end
           rescue Exception => e
             @logger.error("Error in agent #{@agent_name}: #{e}")
