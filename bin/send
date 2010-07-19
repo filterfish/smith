@@ -4,19 +4,31 @@ $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 require 'pp'
 require 'smith'
+require 'trollop'
+
+opts = Trollop::options do
+  text "usage: #{$0} [OPTIONS] <queue> <message>"
+  opt :number, "Number of times to repeat the message", :type => :integer, :default => 1
+end
 
 queue_name = ARGV[0]
-if queue_name.nil?
-  puts "usage: #{$0} <queue> <message>"
-  exit
-end
-
 message = ARGV[1] || ""
 
-l = (Regexp.new(/^lambda/).match(message)) ? eval(message) : lambda { message }
+n = 0
 
-EM.run do
+EM.run {
   queue = RubyMAS::Messaging.new(queue_name)
-  queue.send_message(l.call)
-  AMQP.stop { EM.stop }
-end
+
+  sender = proc {
+    if n < opt[:number]
+      l = (Regexp.new(/^lambda/).match(message)) ? eval(message) : lambda { message }
+      queue.send_message(l.call)
+      EM.next_tick(&sender)
+      n += 1
+    else
+      AMQP.stop { EM.stop }
+    end
+  }
+
+  EM.next_tick(&sender)
+}
