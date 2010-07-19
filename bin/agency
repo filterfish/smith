@@ -11,7 +11,8 @@ include Daemonize
 opts = Trollop::options do
   opt :daemon, "daemonise", :default => false
   opt :logging, "turn amqp logging on", :default => false
-  opt :agents_dir, "agents-dir", :type => :string, :required => true
+  opt :fdsize, "max number of file descriptors", :type => :integer, :default => 1024
+  opt :agents_dir, "directory containing the agents", :type => :string, :required => true
 end
 
 agents_to_start = ARGV
@@ -23,6 +24,8 @@ end
 daemonize if opts[:daemon]
 
 EM.epoll
+EM.set_descriptor_table_size(opts[:fdsize])
+
 EM.run do
   AMQP.logging = true if opts[:logging]
 
