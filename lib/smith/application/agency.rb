@@ -52,7 +52,7 @@ class Agency
           agents_to_terminate = [payload]
         else
           agents_to_terminate = []
-          @logger.error("Cannot agents_shutdown agent #{payload}, it doesn't exist.")
+          @logger.error("Cannot shutdown agent #{payload}, it doesn't exist.")
         end
       end
 
@@ -118,7 +118,7 @@ class Agency
         STDERR.reopen(STDOUT)
 
         @logger.info("Starting: #{agent}")
-        exec('/usr/bin/ruby', @bootstraper, @base_path, agent)
+        exec('ruby', @bootstraper, @base_path, agent)
       end
       # We don't want any zombies.
       Process.detach(pid)
