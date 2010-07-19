@@ -86,7 +86,7 @@ module RubyMAS
     end
 
     def receive_message_from_queue(queue, options={}, &block)
-      options = {:ack => true}.merge(options)
+      options = {:ack => true, :auto_ack => true}.merge(options)
       once = options.delete(:once)
       if !queue.subscribed?
         queue.subscribe(options) do |header,message|
@@ -94,7 +94,7 @@ module RubyMAS
           if decoded_message
             block.call header, decoded_message[:message], decoded_message[:pass_through]
             queue.unsubscribe if once
-            header.ack if options[:ack]
+            header.ack if options[:ack] && options[:auto_ack]
           end
         end
       end
