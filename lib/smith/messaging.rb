@@ -9,11 +9,11 @@ module RubyMAS
 
   module Encoding
     def encode(message)
-      BERT::Encoder.encode(message)
+      Marshal.dump(message)
     end
 
     def decode(message)
-      BERT::Decoder.decode(message)
+      Marshal.load(message)
     end
   end
 
