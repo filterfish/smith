@@ -1,5 +1,4 @@
 require 'mq'
-require 'bert'
 require 'logging'
 require 'extlib'
 

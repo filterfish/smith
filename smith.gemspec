@@ -1,7 +1,7 @@
 spec = Gem::Specification.new do |s|
   s.name = 'smith'
-  s.version = '0.5'
-  s.date = '2010-07-19'
+  s.version = '0.5.1'
+  s.date = '2010-07-24'
   s.summary = 'Multi-agent framework'
   s.email = "rgh@filterfish.org"
   s.homepage = "http://github.com/filterfish/smith/"
@@ -15,7 +15,6 @@ spec = Gem::Specification.new do |s|
   s.add_dependency "trollop"
   s.add_dependency "extlib"
   s.add_dependency "bunny"
-  s.add_dependency "bert"
   s.add_dependency "amqp"
 
   binaries = %w{agency send smithctl}
