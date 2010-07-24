@@ -20,7 +20,7 @@ EM.run {
   queue = RubyMAS::Messaging.new(queue_name)
 
   sender = proc {
-    if n < opt[:number]
+    if n < opts[:number]
       l = (Regexp.new(/^lambda/).match(message)) ? eval(message) : lambda { message }
       queue.send_message(l.call)
       EM.next_tick(&sender)
