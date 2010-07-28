@@ -174,9 +174,13 @@ module RubyMAS
           @logger.info("#{self.class.to_s} received shutdown message. Time to die")
           run_signal_handlers
         when /^log_level/
-          level = payload.split(/:/)[1].to_sym rescue :info
-          @logger.level = level
-          @logger.info("#{self.class.to_s} received log_level message. Chaging log level to payload")
+          begin
+            level = payload.split(/:/)[1].to_sym rescue :info
+            @logger.level = level
+            @logger.info("#{self.class.to_s} received log_level message. Chaging log level to payload")
+          rescue ArgumentError => e
+            @logger.warn(e.message)
+          end
         else
           @logger.warn("Unhandled message for #{@agent_name}")
         end
