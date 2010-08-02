@@ -1,7 +1,7 @@
 spec = Gem::Specification.new do |s|
   s.name = 'smith'
-  s.version = '0.5.1'
-  s.date = '2010-07-24'
+  s.version = '0.6'
+  s.date = '2010-08-02'
   s.summary = 'Multi-agent framework'
   s.email = "rgh@filterfish.org"
   s.homepage = "http://github.com/filterfish/smith/"
@@ -12,6 +12,7 @@ spec = Gem::Specification.new do |s|
   s.authors = ["Richard Heycock"]
   s.add_dependency "eventmachine"
   s.add_dependency "logging"
+  s.add_dependency "daemons"
   s.add_dependency "trollop"
   s.add_dependency "extlib"
   s.add_dependency "bunny"
