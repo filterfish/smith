@@ -151,7 +151,6 @@ module RubyMAS
 
     def run_signal_handlers
       @logger.info("#{self.class.to_s} shutting down. Running signal handlers")
-      send_terminate_message
       @signal_handlers.each { |handler| handler.call }
       EM.next_tick { AMQP.stop { EM.stop; } }
     end
@@ -187,8 +186,15 @@ module RubyMAS
 
     # Send a message saying I'm dying
     def send_terminate_message
-      @logger.debug("Sending #{@agent_name}'s terminate message")
-      Messaging.new(:terminated).send_message(:agent => @agent_name)
+      queue = Messaging.new(:terminated)
+      queue.number_of_consumers { |n|
+        if n > 0
+          queue.send_message(:agent => @agent_name)
+          @logger.debug("Sending #{@agent_name}'s terminate message")
+        else
+          @logger.debug("Not sending #{@agent_name}'s terminate message. Agency not listening")
+        end
+      }
     end
   end
 end
