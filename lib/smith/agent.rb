@@ -1,6 +1,8 @@
 require 'mq'
-require 'logging'
+require 'tmpdir'
 require 'extlib'
+require 'logging'
+require 'daemons/pidfile'
 
 module RubyMAS
   class Agent
@@ -12,8 +14,6 @@ module RubyMAS
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
 
-      @pid_file = PIDFileUtilities.new(Process.pid, self.class.name)
-
       @signal_handlers = []
       @agent_name = self.class.to_s.snake_case
 
@@ -22,7 +22,6 @@ module RubyMAS
       signal_handler = install_signal_handler do
         @logger.debug("Running #{@agent_name}'s default signal handler")
         send_terminate_message
-        @pid_file.remove
       end
 
       add_queues(@@agent_queues)
@@ -113,7 +112,6 @@ module RubyMAS
             @logger.error("Error in agent #{@agent_name}: #{e}")
             @logger.error(e)
             @logger.error("Stopping EM")
-            @pid_file.remove
             AMQP.stop { EM.stop }
 #          ensure
 #            run_signal_handlers

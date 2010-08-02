@@ -7,7 +7,6 @@ require 'pathname'
 require 'logging'
 require 'trollop'
 require 'extlib'
-require 'pp'
 require 'mq'
 
 class Agency
@@ -32,7 +31,7 @@ class Agency
     # Set up queue to manage new agents
     RubyMAS::Messaging.new(:manage).receive_message do |header, agent|
       begin
-        if !agents_available(agent).empty?
+        unless agents_available(agent).empty?
           start_agent(agent)
           @agents_managed << agent unless @agents_managed.include?(agent)
         else
@@ -57,13 +56,26 @@ class Agency
       end
 
       agents_to_terminate.each do |agent|
-        if PIDFileUtilities.process_exists?(agent)
-          # Make sure the restart agent is not monitoring the agent.
-          RubyMAS::Messaging.new(:unmonitor).send_message(agent)
-          @logger.info("Sending unmonitor message to #{agent}")
-          RubyMAS::Messaging.new("agent.#{agent.snake_case}").send_message("shutdown")
-        end
-        @agents_managed.delete(agent)
+        queue = RubyMAS::Messaging.new("agent.#{agent.snake_case}")
+        queue.number_of_consumers { |n|
+          # Check to see if there is an agent listening.
+          if n > 0
+            # Make sure the restart agent is not monitoring the agent.
+            unmonitor_queue = RubyMAS::Messaging.new(:unmonitor)
+            unmonitor_queue.number_of_consumers { |n|
+              if n > 0
+                unmonitor_queue.send_message(agent)
+                @logger.debug("Sending #{agent} to unmonitor queue")
+              else
+                @logger.debug("Not sending #{agent} to unmonitor queue. Restart agent not listening")
+              end
+            }
+            queue.send_message("shutdown")
+            @agents_managed.delete(agent)
+          else
+            @logger.debug("Not sending unmonitor message to #{agent} as it doesn't exist or is not listening")
+          end
+        }
       end
     end
 
@@ -96,32 +108,28 @@ class Agency
   end
 
   def start_agent(agent)
-    if PIDFileUtilities.process_exists?(agent)
-      @logger.error("Not starting: #{agent}. Agent already exists")
-    else
-      pid = fork do
-        # Detach from the controlling terminal
-        unless sess_id = Process.setsid
-          raise 'Cannot detach from controlled terminal'
-        end
-
-        # Close all file descriptors apart from stdin, stdout, stderr
-        ObjectSpace.each_object(IO) do |io|
-          unless [STDIN, STDOUT, STDERR].include?(io)
-            io.close rescue nil
-          end
-        end
-
-        # Sort out the remaining file descriptors. Don't do anything with
-        # stdout (and by extension stderr) as want the agency to manage it.
-        STDIN.reopen("/dev/null")
-        STDERR.reopen(STDOUT)
-
-        @logger.info("Starting: #{agent}")
-        exec('ruby', @bootstraper, @base_path, agent)
+    pid = fork do
+      # Detach from the controlling terminal
+      unless sess_id = Process.setsid
+        raise 'Cannot detach from controlled terminal'
       end
-      # We don't want any zombies.
-      Process.detach(pid)
+
+      # Close all file descriptors apart from stdin, stdout, stderr
+      ObjectSpace.each_object(IO) do |io|
+        unless [STDIN, STDOUT, STDERR].include?(io)
+          io.close rescue nil
+        end
+      end
+
+      # Sort out the remaining file descriptors. Don't do anything with
+      # stdout (and by extension stderr) as want the agency to manage it.
+      STDIN.reopen("/dev/null")
+      STDERR.reopen(STDOUT)
+
+      @logger.info("Starting: #{agent}")
+      exec('ruby', @bootstraper, @base_path, agent)
     end
+    # We don't want any zombies.
+    Process.detach(pid)
   end
 end

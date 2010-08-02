@@ -80,6 +80,12 @@ module RubyMAS
       end
     end
 
+    def number_of_consumers
+      @queue.status do |num_messages, num_consumers|
+        yield num_consumers
+      end
+    end
+
     def close
       @mq.close
     end
