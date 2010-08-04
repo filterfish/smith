@@ -10,6 +10,7 @@ module RubyMAS
 
       raise ArgumentError, "You must specify at least one queue" unless defined?(@@agent_queues)
 
+      logger.info("Starting: #{self.class.name}")
       @queues = {}
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
