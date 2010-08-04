@@ -49,7 +49,7 @@ class AgentBootstrap
   end
 
   def write_pid_file
-    @pid = Daemons::PidFile.new(Daemons::Pid.dir(:normal, Dir::tmpdir, nil), ".rubymas-#{self.class.name.snake_case}")
+    @pid = Daemons::PidFile.new(Daemons::Pid.dir(:normal, Dir::tmpdir, nil), ".rubymas-#{@agent_name.snake_case}")
     if @pid.exist?
       if @pid.running?
         false
