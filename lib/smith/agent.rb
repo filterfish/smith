@@ -19,8 +19,6 @@ module RubyMAS
       @signal_handlers = []
       @agent_name = self.class.to_s.snake_case
 
-      $0 = "#{@agent_name}"
-
       signal_handler = install_signal_handler do
         logger.debug("Running #{@agent_name}'s default signal handler")
         send_terminate_message
