@@ -10,10 +10,11 @@ module RubyMAS
 
       raise ArgumentError, "You must specify at least one queue" unless defined?(@@agent_queues)
 
-      logger.info("Starting: #{self.class.name}")
       @queues = {}
       @signals = (options[:signals]) ? [options[:signals]].flatten : %w{TERM INT QUIT}
       @logger = options[:logger] || Logging.logger(STDOUT)
+
+      logger.info("Starting: #{self.class.name}")
 
       @signal_handlers = []
       @agent_name = self.class.to_s.snake_case
@@ -21,18 +22,18 @@ module RubyMAS
       $0 = "#{@agent_name}"
 
       signal_handler = install_signal_handler do
-        @logger.debug("Running #{@agent_name}'s default signal handler")
+        logger.debug("Running #{@agent_name}'s default signal handler")
         send_terminate_message
       end
 
       add_queues(@@agent_queues)
 
       if options[:restart]
-        @logger.debug("Sending agent name [#{self.class.to_s}] to restart agent")
+        logger.debug("Sending agent name [#{self.class.to_s}] to restart agent")
         Messaging.new(:monitor).send_message(self.class.to_s)
       end
 
-      @logger.debug "Setting up termination handler"
+      logger.debug "Setting up termination handler"
       setup_message_handlers
     end
 
@@ -91,7 +92,7 @@ module RubyMAS
           queue.send_message(message, {:message_id => header.message_id}.merge(options))
           queue.close
         rescue => e
-          @logger.error(e)
+          logger.error(e)
         end
       end
     end
@@ -105,14 +106,14 @@ module RubyMAS
         @queues[queue.to_sym].receive_message(options) do |header,message,pass_through|
           begin
             if AMQP.closing?
-              @logger.error("Message ignored; it will be redelivered later")
+              logger.error("Message ignored; it will be redelivered later")
             else
               block.call(header, message, pass_through)
             end
           rescue Exception => e
-            @logger.error("Error in agent #{@agent_name}: #{e}")
-            @logger.error(e)
-            @logger.error("Stopping EM")
+            logger.error("Error in agent #{@agent_name}: #{e}")
+            logger.error(e)
+            logger.error("Stopping EM")
             AMQP.stop { EM.stop }
 #          ensure
 #            run_signal_handlers
@@ -151,7 +152,7 @@ module RubyMAS
     private
 
     def run_signal_handlers
-      @logger.info("#{self.class.to_s} shutting down. Running signal handlers")
+      logger.info("#{self.class.to_s} shutting down. Running signal handlers")
       @signal_handlers.each { |handler| handler.call }
       EM.next_tick { AMQP.stop { EM.stop; } }
     end
@@ -169,18 +170,18 @@ module RubyMAS
       queue.receive_message do |h,payload|
         case payload
         when 'shutdown'
-          @logger.info("#{self.class.to_s} received shutdown message. Time to die")
+          logger.info("#{self.class.to_s} received shutdown message. Time to die")
           run_signal_handlers
         when /^log_level/
           begin
             level = payload.split(/:/)[1].to_sym rescue :info
-            @logger.level = level
-            @logger.info("#{self.class.to_s} received log_level message. Chaging log level to payload")
+            logger.level = level
+            logger.info("#{self.class.to_s} received log_level message. Chaging log level to payload")
           rescue ArgumentError => e
-            @logger.warn(e.message)
+            logger.warn(e.message)
           end
         else
-          @logger.warn("Unhandled message for #{@agent_name}")
+          logger.warn("Unhandled message for #{@agent_name}")
         end
       end
     end
@@ -191,9 +192,9 @@ module RubyMAS
       queue.number_of_consumers { |n|
         if n > 0
           queue.send_message(:agent => @agent_name)
-          @logger.debug("Sending #{@agent_name}'s terminate message")
+          logger.debug("Sending #{@agent_name}'s terminate message")
         else
-          @logger.debug("Not sending #{@agent_name}'s terminate message. Agency not listening")
+          logger.debug("Not sending #{@agent_name}'s terminate message. Agency not listening")
         end
       }
     end
