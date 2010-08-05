@@ -101,6 +101,10 @@ class SmithControl
     end
   end
 
+  def run_command_single(command, args)
+    print run_command(command.to_sym, :format => true, :args => args)
+  end
+
   def run_command(command, args)
     cmd = AgentCommands.new
     begin
@@ -144,5 +148,5 @@ smith = SmithControl.new
 if ARGV.empty?
   smith.run_command_loop
 else
-  smith.run_command(ARGV.shift, ARGV)
+  smith.run_command_single(ARGV.shift, ARGV)
 end
