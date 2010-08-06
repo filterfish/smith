@@ -174,7 +174,7 @@ module RubyMAS
           begin
             level = payload.split(/:/)[1].to_sym rescue :info
             logger.level = level
-            logger.info("#{self.class.to_s} received log_level message. Chaging log level to payload")
+            logger.info("#{self.class.to_s} received log_level message. Chaging log level to #{level}")
           rescue ArgumentError => e
             logger.warn(e.message)
           end
