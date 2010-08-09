@@ -1,28 +1,9 @@
 # This should never be run directly it should only be
 # ever run by the agency.
 
-require 'daemons/pidfile'
-require File.dirname(__FILE__) + '/../smith'
+$: << File.dirname(__FILE__) + '/..'
 
-# Monkey patch Daemons::PidFile.pid as it doesn't take a
-# filesystem lock and therefore is the source of a race condition.
-module Daemons
-  class PidFile
-    def pid=(p)
-      ok = false
-      begin
-        f = File.new(filename, 'w', 0600)
-        if f.flock(File::LOCK_EX || File::LOCK_NB)
-          f.puts(p)
-          ok = true
-        end
-      ensure
-        f.flock(File::LOCK_UN)
-      end
-      ok
-    end
-  end
-end
+require 'smith'
 
 class AgentBootstrap
 
@@ -35,7 +16,6 @@ class AgentBootstrap
 
   def load_agent
     load @agent_filename
-    @pid.pid = Process.pid
   end
 
   def run

@@ -16,11 +16,7 @@ opts = Trollop::options do
   opt :fdsize,       "max number of file descriptors", :type => :integer, :default => 1024
 end
 
-agents_to_start = ARGV
-
-if ! agents_to_start.empty?
-  puts "Starting Agents:\n%s" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
-end
+agents = ARGV
 
 opts[:logging] = File.expand_path(opts[:logging])
 opts[:agents_dir] = File.expand_path(opts[:agents_dir])
@@ -45,10 +41,11 @@ EM.run do
     agency.setup_queue_handlers
 
     start_agent = proc { |agent|
+      puts "Starting #{agent}"
       RubyMAS::Messaging.new(:manage).send_message(agent)
     }
 
-    EM::Iterator.new(agents_to_start).each(start_agent)
+    EM::Iterator.new(agents).each(start_agent)
   else
     puts "Agency is already running"
     exit

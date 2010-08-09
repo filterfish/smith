@@ -2,7 +2,6 @@
 
 $:.unshift(File.dirname(__FILE__))
 
-require 'rubygems'
 require 'pathname'
 require 'logging'
 require 'trollop'
@@ -12,13 +11,40 @@ require 'mq'
 class Agency
   def initialize(opts={})
     @base_path = opts[:agents_dir] or raise ArgumentError, "no agents path supplied"
-    @logging_path = opts[:logging] or raise ArgumentError, "no logging path supplied"
+
+    @logging_path = opts[:logging]
+    @logger = opts[:logger]
+
+    if @logging_path.nil? && @logger.nil?
+      @logging_path = opts[:logging] or raise ArgumentError, "agency has no logging path supplied or logger"
+    end
+
     @agents_managed = []
 
     @bootstraper = File.join($:.first, '..', 'bootstrap.rb')
 
-    Logging.configure(@logging_path)
-    @logger = Logging::Logger['audit']
+    unless @logger
+      Logging.configure(@logging_path)
+      @logger = Logging::Logger['audit']
+    end
+  end
+
+  def write_pid_file
+    @pid = Daemons::PidFile.new(Daemons::Pid.dir(:normal, Dir::tmpdir, nil), ".rubymas-agency")
+    if @pid.exist?
+      if @pid.running?
+        @logger.warn("Agency is already running")
+        false
+      else
+        @pid.pid = Process.pid
+      end
+    else
+      @pid.pid = Process.pid
+    end
+  end
+
+  def unlink_pid_file
+    @pid.cleanup
   end
 
   def setup_signal_handlers

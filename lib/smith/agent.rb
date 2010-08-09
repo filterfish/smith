@@ -2,7 +2,6 @@ require 'mq'
 require 'tmpdir'
 require 'extlib'
 require 'logging'
-require 'daemons/pidfile'
 
 module RubyMAS
   class Agent
