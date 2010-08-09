@@ -5,7 +5,7 @@ module EventMachine
       @container = container
     end
 
-    def each(work, done)
+    def each(work, done=proc{})
       do_work = proc {
         if !@container.empty?
           work.call(@container.shift)
@@ -17,7 +17,7 @@ module EventMachine
       EM.next_tick(&do_work)
     end
 
-    def map(work, done)
+    def map(work, done=proc{})
       mapped = []
       map_work = proc { |n| mapped << work.call(n) }
       map_done = proc { done.call(mapped) }

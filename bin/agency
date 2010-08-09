@@ -25,6 +25,9 @@ end
 opts[:logging] = File.expand_path(opts[:logging])
 opts[:agents_dir] = File.expand_path(opts[:agents_dir])
 
+Logging.configure(opts[:logging])
+logger = Logging::Logger['audit']
+
 daemonize('/tmp/log') if opts[:daemon]
 
 EM.epoll
@@ -33,19 +36,21 @@ EM.set_descriptor_table_size(opts[:fdsize])
 EM.run do
   AMQP.logging = true if opts[:amqp_logging]
 
-  agency = Agency.new(opts)
+  agency = Agency.new(opts.merge(:logger => logger))
 
-  agency.setup_signal_handlers
-  agency.setup_queue_handlers
+  if agency.write_pid_file
 
-  n = 0
-  start_agent = proc {
-    if n < agents_to_start.size
-      RubyMAS::Messaging.new(:manage).send_message(agents_to_start[n])
-      n += 1
-      EM.next_tick(&start_agent)
-    end
-  }
+    at_exit { agency.unlink_pid_file }
+    agency.setup_signal_handlers
+    agency.setup_queue_handlers
 
-  EM.next_tick(&start_agent)
+    start_agent = proc { |agent|
+      RubyMAS::Messaging.new(:manage).send_message(agent)
+    }
+
+    EM::Iterator.new(agents_to_start).each(start_agent)
+  else
+    puts "Agency is already running"
+    exit
+  end
 end
