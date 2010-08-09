@@ -9,10 +9,11 @@ require 'daemons/daemonize'
 include Daemonize
 
 opts = Trollop::options do
-  opt :daemon, "daemonise", :default => false
-  opt :logging, "turn amqp logging on", :default => false
-  opt :fdsize, "max number of file descriptors", :type => :integer, :default => 1024
-  opt :agents_dir, "directory containing the agents", :type => :string, :required => true
+  opt :agents_dir,   "directory containing the agents", :type => :string, :required => true
+  opt :logging,      "logging config file", :type => :string, :required => true
+  opt :daemon,       "daemonise", :default => false
+  opt :amqp_logging, "turn amqp logging on", :default => false
+  opt :fdsize,       "max number of file descriptors", :type => :integer, :default => 1024
 end
 
 agents_to_start = ARGV
@@ -21,15 +22,18 @@ if ! agents_to_start.empty?
   puts "Starting Agents:\n%s" % agents_to_start.inject("") {|str,a| str << "  #{a}\n" }
 end
 
-daemonize if opts[:daemon]
+opts[:logging] = File.expand_path(opts[:logging])
+opts[:agents_dir] = File.expand_path(opts[:agents_dir])
+
+daemonize('/tmp/log') if opts[:daemon]
 
 EM.epoll
 EM.set_descriptor_table_size(opts[:fdsize])
 
 EM.run do
-  AMQP.logging = true if opts[:logging]
+  AMQP.logging = true if opts[:amqp_logging]
 
-  agency = Agency.new(opts[:agents_dir])
+  agency = Agency.new(opts)
 
   agency.setup_signal_handlers
   agency.setup_queue_handlers

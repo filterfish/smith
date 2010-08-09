@@ -66,13 +66,14 @@ class AgentBootstrap
   end
 end
 
-rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-Logging.configure("config/logging.yml")
-logger = Logging::Logger['audit']
-
 path = ARGV[0]
 agent_name = ARGV[1]
-exit 1 if agent_name.nil? || path.nil?
+logging_config = ARGV[2]
+
+exit 1 if agent_name.nil? || path.nil? || logging_config.nil?
+
+Logging.configure(logging_config)
+logger = Logging::Logger['audit']
 
 # Set the running instance name to the name of the agent.
 $0 = "#{agent_name}"

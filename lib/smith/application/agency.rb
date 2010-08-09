@@ -10,14 +10,14 @@ require 'extlib'
 require 'mq'
 
 class Agency
-  def initialize(base_path)
-    @base_path = base_path
+  def initialize(opts={})
+    @base_path = opts[:agents_dir] or raise ArgumentError, "no agents path supplied"
+    @logging_path = opts[:logging] or raise ArgumentError, "no logging path supplied"
     @agents_managed = []
 
     @bootstraper = File.join($:.first, '..', 'bootstrap.rb')
 
-    rails_env = (ENV['RAILS_ENV'].nil?) ? 'development' : ENV['RAILS_ENV']
-    Logging.configure("./config/logging.yml")
+    Logging.configure(@logging_path)
     @logger = Logging::Logger['audit']
   end
 
@@ -127,7 +127,7 @@ class Agency
       STDERR.reopen(STDOUT)
 
       @logger.info("Starting: #{agent}")
-      exec('ruby', @bootstraper, @base_path, agent)
+      exec('ruby', @bootstraper, @base_path, agent, @logging_path)
     end
     # We don't want any zombies.
     Process.detach(pid)
