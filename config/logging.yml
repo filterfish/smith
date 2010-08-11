@@ -10,14 +10,6 @@ logging_config:
     root:
       level: warn
 
-  loggers:
-    - name: development
-      level: all
-      additive: false
-      trace: true
-      appenders:
-        - development
-
     - name: audit
       level: all
       additive: false
@@ -25,18 +17,9 @@ logging_config:
       appenders:
         - audit
 
-  appenders:
-    - type: File
-      name: development
-      filename: /home/rgh/dev/rails/pn/log/development.log
-      truncate: false
-      layout:
-        type: Pattern
-        pattern: '%d: [%5l] -- %m\n'
-
     - type: File
       name: audit
-      filename: /home/rgh/dev/rails/pn/log/audit.log
+      filename: /var/log/smith/smith.log
       truncate: false
       layout:
         type: Pattern
