@@ -1,7 +1,7 @@
 spec = Gem::Specification.new do |s|
   s.name = 'smith'
-  s.version = '0.6.1'
-  s.date = '2010-08-02'
+  s.version = '0.6.2'
+  s.date = '2010-08-08'
   s.summary = 'Multi-agent framework'
   s.email = "rgh@filterfish.org"
   s.homepage = "http://github.com/filterfish/smith/"
