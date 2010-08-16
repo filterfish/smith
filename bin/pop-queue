@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+require 'mq'
+require 'pp'
+require 'trollop'
+require 'addressable/uri'
+
+opts = Trollop::options do
+  text "Pops a message off the queue.\n\nusage: #{$0} OPTIONS <queue>"
+  opt :print, "print the pop'ed message"
+  opt :ack, "ack the message"
+  opt :number, "number of messages to pop of the queue", :type => :integer, :default => 1
+end
+
+Trollop::die("Need a queue") if ARGV.empty?
+
+queue_name = ARGV[0]
+
+amqp_options = opts[:ack] ? {} : {:ack => true}
+
+begin
+  EM.run {
+    queue = MQ.queue(queue_name)
+
+    n = opts[:number]
+
+    pop = proc {
+      unless n.zero?
+        queue.pop {|payload|
+          if payload
+            message = Marshal.load(payload)
+            if message && opts[:print]
+              pp message.tap {|m| m.delete(:pass_through) }
+            end
+          end
+        }
+        EM.next_tick(&pop)
+        n -= 1
+      else
+        AMQP.stop { EM.stop }
+      end
+    }
+    EM.next_tick(&pop)
+  }
+rescue MQ::Error => e
+  puts e.to_s.gsub(/PRECONDITION_FAILED - /, '')
+end
