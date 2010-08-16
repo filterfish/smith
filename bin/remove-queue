@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+
+require 'mq'
+require 'trollop'
+
+opts = Trollop::options do
+  text "usage: #{$0} [OPTIONS] <queue>"
+  opt :force, "Really remove the queue, even if there is a process listening or there are messages in the queue"
+end
+
+queue_name = ARGV[0]
+queue_name || (puts "usage: #{$0} <queue>"; exit)
+
+amqp_options = opts[:force] ? {:if_unused => false, :if_empty => false} : {:if_unused => true, :if_empty => true}
+
+begin
+  EM.run {
+    queue = MQ.queue(queue_name)
+    queue.delete(amqp_options)
+    AMQP.stop { EM.stop }
+  }
+rescue MQ::Error => e
+  puts e.to_s.gsub(/PRECONDITION_FAILED - /, '')
+end
