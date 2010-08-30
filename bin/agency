@@ -3,6 +3,7 @@
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 require 'smith'
+require 'trollop'
 require 'smith/application/agency'
 require 'daemons/daemonize'
 

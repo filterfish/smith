@@ -4,7 +4,6 @@ $:.unshift(File.dirname(__FILE__))
 
 require 'pathname'
 require 'logging'
-require 'trollop'
 require 'extlib'
 require 'mq'
 
