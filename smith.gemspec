@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'smith'
-  s.version = '0.6.2'
+  s.version = '0.7'
   s.date = '2010-08-08'
   s.summary = 'Multi-agent framework'
   s.email = "rgh@filterfish.org"
@@ -18,7 +18,7 @@ spec = Gem::Specification.new do |s|
   s.add_dependency "bunny"
   s.add_dependency "amqp"
 
-  binaries = %w{agency send smithctl}
+  binaries = %w{agency send smithctl pop-queue remove-queue}
   libraries = Dir.glob("lib/**/*")
 
   s.executables = binaries
