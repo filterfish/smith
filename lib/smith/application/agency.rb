@@ -54,7 +54,7 @@ class Agency
 
   def setup_queue_handlers
     # Set up queue to manage new agents
-    RubyMAS::Messaging.new(:manage).receive_message do |header, agent|
+    Smith::Messaging.new(:manage).receive_message do |header, agent|
       begin
         unless agents_available(agent).empty?
           start_agent(agent)
@@ -68,7 +68,7 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:agents_shutdown).receive_message do |header, payload|
+    Smith::Messaging.new(:agents_shutdown).receive_message do |header, payload|
       if payload == 'all'
         agents_to_terminate = @agents_managed
       else
@@ -81,12 +81,12 @@ class Agency
       end
 
       agents_to_terminate.each do |agent|
-        queue = RubyMAS::Messaging.new("agent.#{agent.snake_case}")
+        queue = Smith::Messaging.new("agent.#{agent.snake_case}")
         queue.number_of_consumers { |n|
           # Check to see if there is an agent listening.
           if n > 0
             # Make sure the restart agent is not monitoring the agent.
-            unmonitor_queue = RubyMAS::Messaging.new(:unmonitor)
+            unmonitor_queue = Smith::Messaging.new(:unmonitor)
             unmonitor_queue.number_of_consumers { |n|
               if n > 0
                 unmonitor_queue.send_message(agent)
@@ -104,23 +104,23 @@ class Agency
       end
     end
 
-    RubyMAS::Messaging.new(:agents_list).receive_message do |header, payload|
+    Smith::Messaging.new(:agents_list).receive_message do |header, payload|
       if header.reply_to
         @logger.debug("Agents managed: #{@agents_managed}")
-        queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
+        queue = Smith::Messaging.new(header.reply_to, :auto_delete => true)
         queue.send_message(@agents_managed, :message_id => header.message_id)
       end
     end
 
-    RubyMAS::Messaging.new(:agents_available).receive_message do |header, payload|
+    Smith::Messaging.new(:agents_available).receive_message do |header, payload|
       if header.reply_to
-        queue = RubyMAS::Messaging.new(header.reply_to, :auto_delete => true)
+        queue = Smith::Messaging.new(header.reply_to, :auto_delete => true)
         agents = (payload && payload[:agent]) ? agents_available(payload[:agent]) : agents_available
         queue.send_message(agents, :message_id => header.message_id)
       end
     end
 
-    RubyMAS::Messaging.new(:terminated).receive_message do |header, payload|
+    Smith::Messaging.new(:terminated).receive_message do |header, payload|
       @agents_managed.delete(payload[:agent].camel_case)
     end
   end

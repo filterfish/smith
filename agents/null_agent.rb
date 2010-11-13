@@ -1,4 +1,4 @@
-class NullAgent < RubyMAS::Agent
+class NullAgent < Smith::Agent
 
   queues :test
 

@@ -11,7 +11,7 @@ class AgentCommands
   class AgentDoesNotExist < RuntimeError; end
 
   def ls(opts={})
-    RubyMAS::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |header,list,pass_through|
+    Smith::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |header,list,pass_through|
       if opts[:format]
         (list.empty?) ? "" : "%s\n" % list.join(" ")
       else
@@ -23,7 +23,7 @@ class AgentCommands
   alias list ls
 
   def agents(opts={})
-    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |header,agents,pass_through|
+    Smith::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |header,agents,pass_through|
       if opts[:format]
         (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
       end
@@ -34,16 +34,16 @@ class AgentCommands
     args = opts[:args]
     queue = args[0]
     payload = (args[2] && args[2] == :json) ? args[1].to_json : args[1]
-    RubyMAS::Sync::Messaging.new(queue).send_message(payload)
+    Smith::Sync::Messaging.new(queue).send_message(payload)
     "sending %s to %s\n" % [payload, queue] if opts[:format]
   end
 
   def start(opts={})
     args = opts[:args]
     agent = args[0]
-    RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
+    Smith::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
       if !result.empty?
-        RubyMAS::Sync::Messaging.new(:manage).send_message(agent)
+        Smith::Sync::Messaging.new(:manage).send_message(agent)
       else
         raise AgentDoesNotExist, agent
       end
@@ -55,11 +55,11 @@ class AgentCommands
     args = opts[:args]
     agent = args.first
     if agent == 'all'
-      RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message('all')
+      Smith::Sync::Messaging.new(:agents_shutdown).send_message('all')
     else
-      RubyMAS::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
+      Smith::Sync::Messaging.new(:agents_available).send_and_receive_message({:agent => agent}, :timeout => 5) do |header,result,pass_through|
         if !result.empty?
-          RubyMAS::Sync::Messaging.new(:agents_shutdown).send_message(agent)
+          Smith::Sync::Messaging.new(:agents_shutdown).send_message(agent)
         else
           raise AgentDoesNotExist, agent
         end
@@ -114,7 +114,7 @@ class SmithControl
       STDERR.puts "#{command}: command not known"
     rescue AgentCommands::AgentDoesNotExist => e
       STDERR.puts "No such agent: #{e}"
-    rescue RubyMAS::Timeout => e
+    rescue Smith::Timeout => e
       STDERR.puts "Cannot contact the agency. Is it running?"
     end
     result || ""

@@ -2,7 +2,7 @@ require 'mq'
 require 'logging'
 require 'extlib'
 
-module RubyMAS
+module Smith
 
   class Timeout < RuntimeError; end
 

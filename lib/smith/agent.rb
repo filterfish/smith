@@ -3,7 +3,7 @@ require 'tmpdir'
 require 'extlib'
 require 'logging'
 
-module RubyMAS
+module Smith
   class Agent
     def initialize(options={})
 

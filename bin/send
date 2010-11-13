@@ -17,7 +17,7 @@ message = ARGV[1] || ""
 n = 0
 
 EM.run {
-  queue = RubyMAS::Messaging.new(queue_name)
+  queue = Smith::Messaging.new(queue_name)
 
   sender = proc {
     if n < opts[:number]

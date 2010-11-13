@@ -43,7 +43,7 @@ EM.run do
 
     start_agent = proc { |agent|
       puts "Starting #{agent}"
-      RubyMAS::Messaging.new(:manage).send_message(agent)
+      Smith::Messaging.new(:manage).send_message(agent)
     }
 
     EM::Iterator.new(agents).each(start_agent)
