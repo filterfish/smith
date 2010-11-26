@@ -10,13 +10,13 @@ spec = Gem::Specification.new do |s|
   s.rubyforge_project = "nowarning"
 
   s.authors = ["Richard Heycock"]
-  s.add_dependency "eventmachine"
+  s.add_dependency "eventmachine", ">= 0.12.11"
   s.add_dependency "logging"
-  s.add_dependency "daemons"
+  s.add_dependency "daemons", ">= 1.1.0"
   s.add_dependency "trollop"
   s.add_dependency "extlib"
   s.add_dependency "bunny"
-  s.add_dependency "amqp"
+  s.add_dependency "amqp", ">= 0.6.7"
 
   binaries = %w{agency send smithctl pop-queue remove-queue}
   libraries = Dir.glob("lib/**/*")
