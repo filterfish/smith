@@ -7,7 +7,7 @@ module EventMachine
 
     def each(work, done=proc{})
       do_work = proc {
-        if !@container.empty?
+        if @container && !@container.empty?
           work.call(@container.shift)
           EM.next_tick(&do_work)
         else
