@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'smith'
-  s.version = '0.7'
+  s.version = '0.7.1'
   s.date = '2010-08-08'
   s.summary = 'Multi-agent framework'
   s.email = "rgh@filterfish.org"
@@ -10,7 +10,7 @@ spec = Gem::Specification.new do |s|
   s.rubyforge_project = "nowarning"
 
   s.authors = ["Richard Heycock"]
-  s.add_dependency "eventmachine", ">= 0.12.11"
+  s.add_dependency "eventmachine", ">= 0.12.10"
   s.add_dependency "logging"
   s.add_dependency "daemons", ">= 1.1.0"
   s.add_dependency "trollop"
