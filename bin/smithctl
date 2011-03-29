@@ -3,7 +3,6 @@
 $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 require 'smith'
-require 'readline'
 require 'pp'
 
 class AgentCommands
@@ -12,11 +11,7 @@ class AgentCommands
 
   def ls(opts={})
     Smith::Sync::Messaging.new(:agents_list).send_and_receive_message(nil, :timeout => 5) do |header,list,pass_through|
-      if opts[:format]
-        (list.empty?) ? "" : "%s\n" % list.join(" ")
-      else
-        list
-      end
+      list
     end
   end
 
@@ -24,9 +19,7 @@ class AgentCommands
 
   def agents(opts={})
     Smith::Sync::Messaging.new(:agents_available).send_and_receive_message(nil, :timeout => 5) do |header,agents,pass_through|
-      if opts[:format]
-        (agents.empty?) ? "" : "%s\n" % agents.sort.join("\n")
-      end
+      agents
     end
   end
 
@@ -35,7 +28,7 @@ class AgentCommands
     queue = args[0]
     payload = (args[2] && args[2] == :json) ? args[1].to_json : args[1]
     Smith::Sync::Messaging.new(queue).send_message(payload)
-    "sending %s to %s\n" % [payload, queue] if opts[:format]
+    "sending %s to %s\n" % [payload, queue]
   end
 
   def start(opts={})
@@ -81,34 +74,13 @@ end
 class SmithControl
   def initialize
     trap('INT', 'SIG_IGN')
-
-    @history_file = "#{ENV['HOME']}/.agentctl"
-
-    @agent_ctl_commands = %w{exit}
-    Readline.completion_append_character = " "
-    Readline.completion_proc = proc { |s| AgentCommands.commands.grep(Regexp.new("^#{Regexp.escape(s)}")) }
-  end
-
-  def run_command_loop
-    manage_history do
-      while input = Readline.readline('# ', true)
-        if input.size > 0
-          split_input = input.split
-          command = split_input.shift.to_sym
-          print run_command(command, :format => true, :args => split_input)
-        end
-      end
-    end
-  end
-
-  def run_command_single(command, args)
-    print run_command(command.to_sym, :format => true, :args => args)
   end
 
   def run_command(command, args)
     cmd = AgentCommands.new
     begin
       result = cmd.send(command, args)
+      puts (result.is_a?(Array)) ? result.sort : result
     rescue NoMethodError, TypeError => e
       pp e.backtrace
       STDERR.puts "#{command}: command not known"
@@ -117,36 +89,8 @@ class SmithControl
     rescue Smith::Timeout => e
       STDERR.puts "Cannot contact the agency. Is it running?"
     end
-    result || ""
-  end
-
-  private
-
-  def manage_history
-    read_history
-    yield
-    save_history
-  end
-
-  def read_history
-    if File.exist?(@history_file)
-      File.read(@history_file).each_line do |history_item|
-        Readline::HISTORY << history_item.chomp
-      end
-    end
-  end
-
-  def save_history
-    File.open(@history_file, 'w', 0600) do |history_file|
-      history_file.puts(Readline::HISTORY.to_a)
-    end
   end
 end
 
 smith = SmithControl.new
-
-if ARGV.empty?
-  smith.run_command_loop
-else
-  smith.run_command_single(ARGV.shift, ARGV)
-end
+smith.run_command(ARGV.shift, ARGV)
