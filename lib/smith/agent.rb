@@ -111,6 +111,7 @@ module Smith
             logger.error("Error in agent #{@agent_name}: #{e}")
             logger.error(e)
             logger.error("Stopping EM")
+            #FIXME surely this should run run_signal_handlers. Maybe.
             AMQP.stop { EM.stop }
 #          ensure
 #            run_signal_handlers
