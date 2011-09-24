@@ -30,7 +30,7 @@ module Smith
       # Set up QOS. If you do not do this then the subscribe in receive_message
       # will get overwelmd and the whole thing will collapse in on itself.
       @mq.prefetch(1)
-      options = {:durable => false}.merge(options)
+      options = {:durable => true}.merge(options)
 
       @exchange = MQ::Exchange.new(@mq, :direct, queue_name.to_s, options)
       @queue = MQ::Queue.new(@mq, queue_name.to_s, options).bind(@exchange)
@@ -47,6 +47,7 @@ module Smith
     def send_and_receive(message, options={}, &block)
       timeout = options.delete(:timeout) || 300
       on = options.delete(:on)
+      options.merge!(:durable => true)
 
       if on
         case
@@ -120,14 +121,14 @@ module Smith
       def initialize(queue_name, options={})
         @bunny = Bunny.new(options)
 
-        @options = {:durable => false}.merge(options)
+        @options = {:durable => true}.merge(options)
         @queue_name = queue_name
       end
 
       def send_message(message, options={})
         bunny_run do |bunny|
           queue = bunny.queue(@queue_name, @options.merge(:durable => @options[:durable]))
-          queue.publish(encode({:message => message, :pass_through => options.delete(:pass_through)}), options)
+          queue.publish(encode({:message => message, :durable => true, :pass_through => options.delete(:pass_through)}), options)
         end
       end
 
@@ -145,9 +146,9 @@ module Smith
 
           send_queue = bunny.queue(@queue_name, @options)
           message = {:message => message, :pass_through => options.delete(:pass_through)}
-          send_queue.publish(encode(message), :reply_to => reply_queue_name, :ack => true, :message_id => message_id)
+          send_queue.publish(encode(message), :reply_to => reply_queue_name, :ack => true, :durable => true, :message_id => message_id)
 
-          reply_queue = bunny.queue(reply_queue_name, :durable => false, :auto_delete => true)
+          reply_queue = bunny.queue(reply_queue_name, :durable => true, :auto_delete => true)
           reply_queue.subscribe(:header => true, :message_max => 1, :timeout => timeout, :ack => true) do |return_message|
             if return_message[:header].message_id == message_id
               response = decode(return_message[:payload])
