@@ -79,10 +79,10 @@ class SmithControl
   def run_command(command, args)
     cmd = AgentCommands.new
     begin
-      result = cmd.send(command, args)
+      result = cmd.send(command, :args => args)
       puts (result.is_a?(Array)) ? result.sort : result
     rescue NoMethodError, TypeError => e
-      pp e.backtrace
+      pp e
       STDERR.puts "#{command}: command not known"
     rescue AgentCommands::AgentDoesNotExist => e
       STDERR.puts "No such agent: #{e}"
