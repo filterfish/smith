@@ -10,7 +10,7 @@ require 'daemons/daemonize'
 include Daemonize
 
 opts = Trollop::options do
-  opt :agents_dir,   "directory containing the agents", :type => :string, :required => true
+  opt :agents_dir,   "directory containing the agents", :type => :strings, :required => true
   opt :logging,      "logging config file", :type => :string, :required => true
   opt :daemon,       "daemonise", :default => false
   opt :amqp_logging, "turn amqp logging on", :default => false
@@ -20,7 +20,7 @@ end
 agents = ARGV
 
 opts[:logging] = File.expand_path(opts[:logging])
-opts[:agents_dir] = File.expand_path(opts[:agents_dir])
+opts[:agents_dir] = opts[:agents_dir].map { |p| File.expand_path(p) }
 
 Logging.configure(opts[:logging])
 logger = Logging::Logger['audit']

@@ -9,7 +9,7 @@ require 'mq'
 
 class Agency
   def initialize(opts={})
-    @base_path = opts[:agents_dir] or raise ArgumentError, "no agents path supplied"
+    @base_paths = opts[:agents_dir] or raise ArgumentError, "no agents path supplied"
 
     @logging_path = opts[:logging]
     @logger = opts[:logger]
@@ -129,7 +129,9 @@ class Agency
 
   def agents_available(agent=nil)
     glob = (agent) ? "#{agent.snake_case}.rb" : '*.rb'
-    Dir.glob(File.join(@base_path, glob)).map { |a| File.basename(a, '.rb').camel_case }
+    @base_paths.map do |base_path|
+      Dir.glob(File.join(base_path, glob)).map { |a| File.basename(a, '.rb').camel_case }
+    end.flatten.uniq
   end
 
   def start_agent(agent)
@@ -152,9 +154,14 @@ class Agency
       STDERR.reopen(STDOUT)
 
       @logger.info("Starting: #{agent}")
-      exec('ruby', @bootstraper, @base_path, agent, @logging_path)
+      exec('ruby', @bootstraper, agent_path(agent), agent, @logging_path)
     end
     # We don't want any zombies.
     Process.detach(pid)
+  end
+
+  # Get agent path for a specific agent from the array of paths.
+  def agent_path(agent)
+    @base_paths.detect { |a| Pathname.new(a).join("#{agent.snake_case}.rb").exist? }
   end
 end
